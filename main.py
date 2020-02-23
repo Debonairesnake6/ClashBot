@@ -47,7 +47,7 @@ async def send_discord(ctx, legend, table=False, image=False):
 
     # Print the legend to console and discord
     if legend is not None:
-        print(legend)
+        # print(legend)
         await ctx.send(legend, file=File('table.png', filename='table.png'))
 
 
