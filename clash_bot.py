@@ -69,7 +69,7 @@ def read_messages(bot):
         if ctx.view.buffer != '!clash':
 
             # Get the desired player names
-            for player_name_cnt, player_name in enumerate(ctx.view.buffer.split()[1:]):
+            for player_name_cnt, player_name in enumerate(ctx.view.buffer[7:].split(',')):
 
                 # Skip if it already names 5 players
                 if player_name_cnt >= 5:
@@ -197,6 +197,7 @@ if __name__ == '__main__':
             #   -   Account for player ranks
             #   -   Win rate of champions
             #   -   Add a !remove function to remove posts
+            #   -   Swap row/column header in play rate table
 
             main()
 
