@@ -145,7 +145,7 @@ class Calculate:
         self.img = Image.new('RGB', ((columns * 12), rows * 21 + 21), color=(54, 57, 63))
 
         # Initialize font and drawing object
-        self.font = ImageFont.truetype(r'C:\Windows\Fonts\cour.ttf', 20)
+        self.font = ImageFont.truetype('cour.ttf', 20)
         self.draw = ImageDraw.Draw(self.img)
 
         # Draw the table
