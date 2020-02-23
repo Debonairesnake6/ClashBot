@@ -63,7 +63,7 @@ class Calculate:
                     continue
 
                 if champion_name.isdigit():
-                    print()
+                    pass
 
                 # Calculate the points for the champion
                 self.calculate_points(champion_name, modifier)
@@ -182,7 +182,7 @@ class Calculate:
         :param line: The line the score is located on
         """
 
-        print(f'{score}: {(float(score) / self.total_ban_points) * 100}')
+        # print(f'{score}: {(float(score) / self.total_ban_points) * 100}')
 
         # Red if +25% of the total
         if float(score) / self.total_ban_points > 0.11:
