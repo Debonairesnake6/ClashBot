@@ -11,13 +11,15 @@ class RoleRate:
     """
     Handle creating the roll rate table
     """
-    def __init__(self, api_results: object):
+    def __init__(self, api_results: object, title_colours: list):
         """
         Handle creating the role rate table
 
         :param api_results: Results from the api_queries file
+        :param title_colours: What to colour each title based ont eh player's rank
         """
         self.api_results = api_results
+        self.title_colours = title_colours[:]
         self.titles = None
         self.columns = []
         self.current_column = []
@@ -55,7 +57,7 @@ class RoleRate:
         Create the image from the processed results
         """
         CreateImage(self.titles, self.columns, 'extra_files/roll_rate.png',
-                    colour=self.colour_columns, convert_columns=True)
+                    colour=self.colour_columns, convert_columns=True, title_colours=self.title_colours)
 
     def create_roll_rate_table(self):
         """
@@ -68,7 +70,12 @@ class RoleRate:
 
         # Collect the play rate information
         for player in self.api_results.player_information:
-            self.match_history = self.api_results.player_information[player]['all_match_history']
+            try:
+                self.match_history = self.api_results.player_information[player]['all_match_history']
+
+            # If the player has no match history
+            except KeyError:
+                continue
             self.calculate_all_roles()
 
         self.add_highlighting_for_high_play_rate()
@@ -77,8 +84,9 @@ class RoleRate:
         """
         Adjust the player list to include columns for number of mastery points
         """
-        self.titles = self.api_results.player_list[:]
+        self.titles = self.api_results.titles[:]
         self.titles.insert(0, 'Role')
+        self.title_colours.insert(0, '')
 
     def add_highlighting_for_high_play_rate(self):
         """

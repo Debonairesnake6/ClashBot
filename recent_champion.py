@@ -18,14 +18,16 @@ class RecentChampion:
     """
     Handle creating the recent champion table
     """
-    def __init__(self, api_results: object, table_type: str):
+    def __init__(self, api_results: object, table_type: str, title_colours: list):
         """
         Handle creating the recent champion table
 
         :param api_results: Results from the api_queries file
         :param table_type: Type of table to create: ranked_match_ranked, all_match_history
+        :param title_colours: What to colour each title based ont eh player's rank
         """
         self.api_results = api_results
+        self.title_colours = title_colours[:]
         self.titles = None
         self.columns = []
         self.current_column = []
@@ -66,7 +68,7 @@ class RecentChampion:
         Create the image from the processed results
         """
         CreateImage(self.titles, self.columns, 'extra_files/recent_champion.png',
-                    colour=self.colour_columns, convert_columns=True)
+                    colour=self.colour_columns, convert_columns=True, title_colours=self.title_colours)
 
     def create_recent_champion_table(self):
         """
@@ -77,7 +79,17 @@ class RecentChampion:
 
         # Gather the recent champions for each player
         for player in self.api_results.player_information:
-            self.match_history = self.api_results.player_information[player][self.table_type]
+            try:
+                self.match_history = self.api_results.player_information[player][self.table_type]
+
+            # If the player has no match history
+            except KeyError:
+                blank = ['', '', '', '', '', '', '', '', '', '']
+                self.columns.append(blank)
+                self.columns.append(blank)
+                self.colour_columns.append(blank)
+                self.colour_columns.append(blank)
+
             self.get_recent_champions()
             self.add_most_popular_to_column()
             self.add_high_games_played_colour()
@@ -98,7 +110,9 @@ class RecentChampion:
         Add highlighting for lots of games played
         """
         for games_played in self.current_column_values:
-            if int(games_played) >= 25:
+            if games_played == '':
+                self.colour_current_column.append('')
+            elif int(games_played) >= 25:
                 self.colour_current_column.append('orange')
             elif int(games_played) >= 10:
                 self.colour_current_column.append('blue')
@@ -154,18 +168,32 @@ class RecentChampion:
         Adjust the player list to include columns for number of mastery points
         """
         self.titles = []
-        for player_cnt, player in enumerate(self.api_results.player_list):
+        for player_cnt, player in enumerate(self.api_results.titles):
             self.titles.append(player)
             self.titles.append(f'#{player_cnt + 1}')
+
+        # Adjust colouring for the titles
+        self.title_colours = [colour for copy_list in [[rank, rank] for rank in self.title_colours]
+                              for colour in copy_list]
 
     def add_most_popular_to_column(self):
         """
         Add the most popular champs to the current column
         """
         for x in range(10):
-            champ_name = max(self.champions_played.items(), key=operator.itemgetter(1))[0]
+            try:
+                champ_name = max(self.champions_played.items(), key=operator.itemgetter(1))[0]
+
+            # If the player has less than 10 champs played
+            except ValueError:
+                break
             self.current_column.append(champ_name)
             self.current_column_values.append(str(self.champions_played.pop(champ_name)))
+
+        # Pad the column until it reaches a length of 10
+        while len(self.current_column) < 10:
+            self.current_column.append('')
+            self.current_column_values.append('')
         self.columns.append(self.current_column)
         self.columns.append(self.current_column_values)
 

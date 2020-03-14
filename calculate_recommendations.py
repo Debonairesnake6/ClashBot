@@ -101,9 +101,10 @@ class CalculateBanRecommendations:
         """
         for column_cnt, column in enumerate(self.current_table):
             for row_cnt, champ_name in enumerate(column):
-                self.current_champ = champ_name
-                self.current_colour = self.current_colours[column_cnt][row_cnt]
-                self.calculate_points()
+                if champ_name != '':
+                    self.current_champ = champ_name
+                    self.current_colour = self.current_colours[column_cnt][row_cnt]
+                    self.calculate_points()
 
     def calculate_points(self):
         """

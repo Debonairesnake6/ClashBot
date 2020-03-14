@@ -26,6 +26,7 @@ class APIQueries:
         # Placeholder variables
         self.response = None
         self.champion_info = None
+        self.titles = []
         self.player_list = player_list
         self.base_url = 'https://na1.api.riotgames.com'
         self.api_key = f'?api_key={os.getenv("RIOT_API")}'
@@ -79,6 +80,18 @@ class APIQueries:
                 self.get_player_ranked_clash_match_history(player)
                 self.get_player_champion_mastery(player)
                 self.get_ranked_information(player)
+        self.cleanup()
+
+    def cleanup(self):
+        """
+        Remove players for the player_information dictionary if they have no match history
+        """
+        remove = []
+        for player in self.player_information:
+            if player in self.errors['no_match_history']:
+                remove.append(player)
+        for player in remove:
+            self.player_information.pop(player)
 
     def get_ranked_information(self, player: str):
         """
@@ -129,6 +142,7 @@ class APIQueries:
         else:
             self.player_information[player] = {'id': summoner_info['id'],
                                                'accountId': summoner_info['accountId']}
+            self.titles.append(player)
 
     def get_non_random_match_history(self, player: str):
         """
@@ -144,6 +158,7 @@ class APIQueries:
             self.player_information[player]['all_match_history'] = self.get_json(query_url)['matches']
         except HTTPError:
             self.errors['no_match_history'].append(player)
+            self.titles.remove(player)
 
     def get_player_ranked_clash_match_history(self, player: str):
         """
@@ -157,7 +172,8 @@ class APIQueries:
         try:
             self.player_information[player]['ranked_match_history'] = self.get_json(query_url)['matches']
         except HTTPError:
-            self.errors['no_ranked_clash'].append(player)
+            if player not in self.errors['no_match_history']:
+                self.errors['no_ranked_clash'].append(player)
 
     def get_player_champion_mastery(self, player: str):
         """

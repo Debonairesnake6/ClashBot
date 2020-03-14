@@ -58,7 +58,12 @@ class PlayerRanks:
         Process a single player to grab their rank
         """
         self.player_column.append(self.player_name)
-        self.rank_column.append(f'{self.player_ranked_info["tier"]} {self.player_ranked_info["rank"]}')
+        try:
+            self.rank_column.append(f'{self.player_ranked_info["tier"]} {self.player_ranked_info["rank"]}')
+
+        # If the player has not been placed in ranked
+        except KeyError:
+            self.rank_column.append('UNRANKED')
 
     def set_colour_columns(self):
         """
