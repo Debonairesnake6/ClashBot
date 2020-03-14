@@ -1,189 +1,138 @@
+"""
+The file will grab the information required to create the roll rate table
+"""
+
 import prettytable
-import globals
 
-from mastery_shared import get_json
-from mastery_shared import get_summoner_by_name
-
-# Get globals
-base_url = globals.base_url
-api_key = globals.api_key
+from text_to_image import CreateImage
 
 
-# Calculate the role for each player
-def calculate_roles(match_history):
+class RoleRate:
+    """
+    Handle creating the roll rate table
+    """
+    def __init__(self, api_results: object):
+        """
+        Handle creating the role rate table
 
-    # Hold the player roles
-    player_roles = {}
+        :param api_results: Results from the api_queries file
+        """
+        self.api_results = api_results
+        self.titles = None
+        self.columns = []
+        self.current_column = []
+        self.colour_columns = []
+        self.colour_current_column = []
+        self.match_history = None
+        self.player_roles = None
+        self.current_match = None
+        self.player_games_played = None
+        self.role_ids = {
+            'SOLO - TOP': 'top',
+            'SOLO - MID': 'mid',
+            'NONE - JUNGLE': 'jng',
+            'DUO_CARRY - BOTTOM': 'bot',
+            'DUO_SUPPORT - BOTTOM': 'sup',
+            'TOP': 'top',
+            'JUNGLE': 'jng',
+            'MID': 'mid',
+            'BOTTOM': 'bot',
+            'DUO': 'bot',
+            'DUO_SUPPORT': 'sup'
+        }
 
-    # Get games played in each role
-    for player_name, player_matches in match_history.items():
+        self.setup()
 
-        # Add the player to the dictionary
-        player_roles[player_name] = {'top': 0,
-                                     'jng': 0,
-                                     'mid': 0,
-                                     'bot': 0,
-                                     'sup': 0}
+    def setup(self):
+        """
+        Run the major functions of the object
+        """
+        self.create_roll_rate_table()
+        self.create_image()
 
-        # Loop through all of the matches
-        for match in player_matches['matches']:
+    def create_image(self):
+        """
+        Create the image from the processed results
+        """
+        CreateImage(self.titles, self.columns, 'extra_files/roll_rate.png',
+                    colour=self.colour_columns, convert_columns=True)
 
-            # Check if solo lane
-            if match['role'] == 'SOLO':
+    def create_roll_rate_table(self):
+        """
+        Create the roll rate table and all of it's components
+        """
+        # Setup the table
+        self.adjust_titles()
+        self.columns.append(['Top', 'Jng', 'Mid', 'Bot', 'Sup'])
+        self.colour_columns.append(['', '', '', '', ''])
 
-                # If top
-                if match['lane'] == 'TOP':
-                    player_roles[player_name]['top'] = player_roles[player_name]['top'] + 1
+        # Collect the play rate information
+        for player in self.api_results.player_information:
+            self.match_history = self.api_results.player_information[player]['all_match_history']
+            self.calculate_all_roles()
 
-                # If mid
-                elif match['lane'] == 'MID':
-                    player_roles[player_name]['mid'] = player_roles[player_name]['mid'] + 1
+        self.add_highlighting_for_high_play_rate()
 
-            # If jng
-            elif match['role'] == 'NONE':
-                if match['lane'] == 'JUNGLE':
-                    player_roles[player_name]['jng'] = player_roles[player_name]['jng'] + 1
+    def adjust_titles(self):
+        """
+        Adjust the player list to include columns for number of mastery points
+        """
+        self.titles = self.api_results.player_list[:]
+        self.titles.insert(0, 'Role')
 
-            # If bot
-            elif match['role'] == 'DUO_CARRY':
-                if match['lane'] == 'BOTTOM':
-                    player_roles[player_name]['bot'] = player_roles[player_name]['bot'] + 1
+    def add_highlighting_for_high_play_rate(self):
+        """
+        Highlight play rates that are above a certain percentage
+        """
+        for player in self.columns[1:]:
+            self.player_games_played = player
+            self.add_highlighting_for_current_player()
 
-            # If sup
-            elif match['role'] == 'DUO_SUPPORT':
-                if match['lane'] == 'BOTTOM':
-                    player_roles[player_name]['sup'] = player_roles[player_name]['sup'] + 1
-
-            # Just add based on one criteria
+    def add_highlighting_for_current_player(self):
+        """
+        Add highlighting for the current player based on games played
+        """
+        self.colour_current_column = []
+        for games_played in self.player_games_played:
+            if int(games_played) >= 50:
+                self.colour_current_column.append('red')
+            elif int(games_played) >= 25:
+                self.colour_current_column.append('orange')
             else:
+                self.colour_current_column.append('')
+        self.colour_columns.append(self.colour_current_column)
 
-                # If top
-                if match['lane'] == 'TOP':
-                    player_roles[player_name]['top'] = player_roles[player_name]['top'] + 1
+    def calculate_all_roles(self):
+        """
+        Calculate the roles for the current player
+        """
+        self.player_roles = {
+            'top': 0,
+            'jng': 0,
+            'mid': 0,
+            'bot': 0,
+            'sup': 0
+        }
 
-                # If mid
-                elif match['lane'] == 'MID':
-                    player_roles[player_name]['mid'] = player_roles[player_name]['mid'] + 1
+        # Get the role for each game
+        for match in self.match_history:
+            self.current_match = match
+            self.determine_role_played()
 
-                # If jng
-                elif match['lane'] == 'JUNGLE':
-                    player_roles[player_name]['jng'] = player_roles[player_name]['jng'] + 1
+        # Add the final list to the columns set
+        self.columns.append([str(self.player_roles['top']), str(self.player_roles['jng']),
+                             str(self.player_roles['mid']), str(self.player_roles['bot']),
+                             str(self.player_roles['sup'])])
 
-                # If bot
-                elif match['role'] == 'DUO_CARRY':
-                    player_roles[player_name]['bot'] = player_roles[player_name]['bot'] + 1
-
-                # If sup
-                elif match['role'] == 'DUO_SUPPORT':
-                    player_roles[player_name]['sup'] = player_roles[player_name]['sup'] + 1
-
-                # If jng
-                elif match['role'] == 'DUO':
-                    player_roles[player_name]['bot'] = player_roles[player_name]['bot'] + 1
-
-    # Get percentage of each role
-    for player_name, role_list in player_roles.items():
-
-        # Hold total games calculated
-        total_games = 0
-
-        # Grab games from each position
-        for _, games_played in role_list.items():
-            total_games += games_played
-
-        # Change each number into a percentage
-        for role, games_played in role_list.items():
-            player_roles[player_name][role] = int(games_played / total_games * 100)
-
-    # Calculate roles
-    return player_roles
-
-
-# Get the match history for the given player
-def get_match_history(player_list):
-
-    # Get the encrypted summoner id
-    account_id = get_summoner_by_name(player_list)
-
-    # Create holder for match history
-    match_history = {}
-
-    # Call to riot's api for each player (Not ARAM/Poro King)
-    '''
-    Norms Draft: 400
-    Clash: 700
-    Ranked Solo: 420
-    Ranked Flex: 440
-    Norms Blind: 430
-    Poro King: 920
-    Aram: 450
-    '''
-    for player in account_id:
-        match_history[player] = get_json(f'{base_url}/lol/match/v4/matchlists/by-account/'
-                                         f'{account_id[player]["accountId"]}?api_key={api_key}'
-                                         f'&queue=400&queue=700&queue=420&queue=440&queue=430')
-
-    # Save the match history for other tables
-    globals.player_match_history = match_history
-
-    # Return the match history
-    return match_history
-
-
-# Format array for the table
-def table_format(player_roles):
-
-    # Loop through each player
-    for player_name, roll_list in player_roles.items():
-
-        # Loop through each role
-        for role_name, games_played in roll_list.items():
-
-            # If high games played
-            if games_played > 60:
-                player_roles[player_name][role_name] = f'60:{player_roles[player_name][role_name]}60:'
-
-            # If medium games played
-            elif games_played > 30:
-                player_roles[player_name][role_name] = f'30:{player_roles[player_name][role_name]}30:'
-
-    return player_roles
-
-
-# Get the odds a player will play a role
-def get_player_roles(player_list):
-
-    # Get the match history
-    match_history = get_match_history(player_list)
-
-    # Calculate the roles
-    player_roles = calculate_roles(match_history)
-
-    # Return array of odds
-    return player_roles
-
-
-# Get the role rate table
-def role_rate_table(player_list):
-
-    # Create a rr_table
-    rr_table = prettytable.PrettyTable()
-    rr_table.field_names = ['Player', 'Top', 'Jng', 'Mid', 'Bot', 'Sup']
-
-    # Get positional amounts for each player
-    player_roles = get_player_roles(player_list)
-
-    # Format rr_table
-    player_roles = table_format(player_roles)
-
-    # Add each player to the rr_table
-    for player_name in player_roles:
-        rr_table.add_row([f'{player_name}',
-                          player_roles[player_name]['top'],
-                          player_roles[player_name]['jng'],
-                          player_roles[player_name]['mid'],
-                          player_roles[player_name]['bot'],
-                          player_roles[player_name]['sup']])
-
-    # Return the rr_table
-    return rr_table
+    def determine_role_played(self):
+        """
+        Determine the role played based on the match history
+        """
+        if f'{self.current_match["role"]} - {self.current_match["lane"]}' in self.role_ids:
+            self.player_roles[self.role_ids[f'{self.current_match["role"]} - {self.current_match["lane"]}']] += 1
+        elif self.current_match['lane'] in self.role_ids:
+            self.player_roles[self.role_ids[self.current_match['lane']]] += 1
+        elif self.current_match['role'] in self.role_ids:
+            self.player_roles[self.role_ids[self.current_match['role']]] += 1
+        else:
+            print(f'{self.current_match["role"]} - {self.current_match["lane"]}')

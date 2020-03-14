@@ -1,231 +1,186 @@
-import prettytable
-import globals
+"""
+This file gathers all of the information needed to create the recent champion table
+"""
+import operator
 
-from mastery_shared import highlight_same_champ
-
-# Get globals
-base_url = globals.base_url
-api_key = globals.api_key
+from text_to_image import CreateImage
 
 
-# Get the champion names from the ids
-def get_champion_info():
-
-    # Get the champion info page
-    champion_info = globals.champion_info
-
-    # Hold champion id values
-    champ_ids = {}
-
-    # Get the information for each champ
-    for champion in champion_info:
-
-        # Match the champion id to the mastery champion
-        for champ_name, _ in champion_info['data'].items():
-
-            # Save the champ id
-            champ_ids[champion_info['data'][champ_name]['key']] = champ_name
-
-    # Return the champ ids
-    return champ_ids
+class BadTableType(Exception):
+    """
+    Custom error message for bad table types
+    """
+    def __init__(self, message):
+        super().__init__(message)
 
 
-# Get the champion name
-def get_recent_champs(match_history, amount=10):
+class RecentChampion:
+    """
+    Handle creating the recent champion table
+    """
+    def __init__(self, api_results: object, table_type: str):
+        """
+        Handle creating the recent champion table
 
-    # Hold the champion names
-    champ_names = {}
+        :param api_results: Results from the api_queries file
+        :param table_type: Type of table to create: ranked_match_ranked, all_match_history
+        """
+        self.api_results = api_results
+        self.titles = None
+        self.columns = []
+        self.current_column = []
+        self.current_column_values = []
+        self.colour_columns = []
+        self.colour_current_column = []
+        self.match_history = None
+        self.current_match = None
+        self.champion_info = self.api_results.champion_info
+        self.champions_played = {}
+        self.champion = None
+        self.player_cnt = None
+        self.player_champ_cnt = None
+        self.matching_cnt = None
+        self.other_player_champions = None
+        self.table_type = table_type
 
-    # Get the champion info
-    champion_ids = get_champion_info()
+        self.setup()
 
-    # Loop through each player
-    for player_cnt, player in enumerate(match_history):
+    def setup(self):
+        """
+        Run the major functions of the object
+        """
+        self.verify_correct_table_type()
+        self.create_recent_champion_table()
+        self.create_image()
 
-        # Add player to dictionary
-        champ_names[player] = {}
+    def verify_correct_table_type(self):
+        """
+        If the table type is incorrect then fail
+        """
+        valid_table_types = ['all_match_history', 'ranked_match_history']
+        if self.table_type not in valid_table_types:
+            raise BadTableType('Table type needs to be of: all_match_history, ranked_match_history')
 
-        # Return empty list if the
-        if match_history[player] is None:
-            return {'Games': [], 'Names': []}
+    def create_image(self):
+        """
+        Create the image from the processed results
+        """
+        CreateImage(self.titles, self.columns, 'extra_files/recent_champion.png',
+                    colour=self.colour_columns, convert_columns=True)
 
-        # Create an array to hold current champions in order
-        current_champion_names = []
-        current_games_played = []
+    def create_recent_champion_table(self):
+        """
+        Create the roll rate table and all of it's components
+        """
+        # Setup the table
+        self.adjust_titles()
 
-        if match_history[player] is None:
-            print()
+        # Gather the recent champions for each player
+        for player in self.api_results.player_information:
+            self.match_history = self.api_results.player_information[player][self.table_type]
+            self.get_recent_champions()
+            self.add_most_popular_to_column()
+            self.add_high_games_played_colour()
+            self.reset_column_values()
 
-        # Loop through each match
-        for match_cnt, match in enumerate(match_history[player]['matches']):
+        self.add_highlighting_for_shared_champs()
 
-            # Grab the champion name
-            champion_name = champion_ids[str(match['champion'])]
+    def reset_column_values(self):
+        """
+        Reset the values to the current column before processing the next player
+        """
+        self.current_column = []
+        self.current_column_values = []
+        self.colour_current_column = []
 
-            # Add a game to the current count of the current champion if it exists
-            if champion_name in champ_names[player]:
-                champ_names[player][champion_name] = champ_names[player][champion_name] + 1
-
-            # Otherwise add it to the list
+    def add_high_games_played_colour(self):
+        """
+        Add highlighting for lots of games played
+        """
+        for games_played in self.current_column_values:
+            if int(games_played) >= 25:
+                self.colour_current_column.append('orange')
+            elif int(games_played) >= 10:
+                self.colour_current_column.append('blue')
             else:
-                champ_names[player][champion_name] = 1
+                self.colour_current_column.append('')
+        self.colour_columns.append(self.colour_current_column)
+        self.colour_columns.append(self.colour_current_column)
 
-        # Create a sorted list
-        for champion in champ_names[player]:
+    def add_highlighting_for_shared_champs(self):
+        """
+        Add highlighting to each column for shared champs
+        """
+        for player_cnt, player_champions in enumerate(self.columns[::2]):
+            for player_champ_cnt, champion in enumerate(player_champions):
+                self.champion = champion
+                self.player_cnt = player_cnt
+                self.player_champ_cnt = player_champ_cnt
+                self.match_champ_with_other_player()
 
-            # If list is empty, add to array
-            if len(current_champion_names) == 0:
-                current_champion_names.append(champion)
-                current_games_played.append(champ_names[player][champion])
+    def match_champ_with_other_player(self):
+        """
+        Highlight if the current champ is shared with other players
+        """
+        for matching_cnt, other_player_champions in enumerate(self.columns[2 + (self.player_cnt * 2)::2]):
+            if self.champion in other_player_champions:
+                self.matching_cnt = matching_cnt
+                self.other_player_champions = other_player_champions
+                self.set_colours_for_champions()
 
-            # Add to array in order
-            else:
+    def set_colours_for_champions(self):
+        """
+        Colour the original champion and it's matching champion name
+        """
+        # Colour the original player
+        if self.colour_columns[self.player_cnt * 2][self.player_champ_cnt] == 'orange':
+            self.colour_columns[self.player_cnt * 2][self.player_champ_cnt] = 'red'
+        elif self.colour_columns[self.player_cnt * 2][self.player_champ_cnt] == 'blue':
+            self.colour_columns[self.player_cnt * 2][self.player_champ_cnt] = 'yellow'
+        else:
+            self.colour_columns[self.player_cnt * 2][self.player_champ_cnt] = 'green'
 
-                # Grab the new games played for the current champion
-                new_games_played = champ_names[player][champion]
+        # Colour the matched player
+        matched_champ_cnt = self.other_player_champions.index(self.champion)
+        if self.colour_columns[2 + (self.player_cnt * 2) + (self.matching_cnt * 2)][matched_champ_cnt] == 'orange':
+            self.colour_columns[2 + (self.player_cnt * 2) + (self.matching_cnt * 2)][matched_champ_cnt] = 'red'
+        elif self.colour_columns[2 + (self.player_cnt * 2) + (self.matching_cnt * 2)][matched_champ_cnt] == 'blue':
+            self.colour_columns[2 + (self.player_cnt * 2) + (self.matching_cnt * 2)][matched_champ_cnt] = 'yellow'
+        else:
+            self.colour_columns[2 + (self.player_cnt * 2) + (self.matching_cnt * 2)][matched_champ_cnt] = 'green'
 
-                # Loop through each champion played
-                for games_played_cnt, old_games_played in enumerate(current_games_played):
+    def adjust_titles(self):
+        """
+        Adjust the player list to include columns for number of mastery points
+        """
+        self.titles = []
+        for player_cnt, player in enumerate(self.api_results.player_list):
+            self.titles.append(player)
+            self.titles.append(f'#{player_cnt + 1}')
 
-                    # Add in current spot if higher than the current
-                    if new_games_played > old_games_played:
-                        current_champion_names.insert(games_played_cnt, champion)
-                        current_games_played.insert(games_played_cnt, new_games_played)
+    def add_most_popular_to_column(self):
+        """
+        Add the most popular champs to the current column
+        """
+        for x in range(10):
+            champ_name = max(self.champions_played.items(), key=operator.itemgetter(1))[0]
+            self.current_column.append(champ_name)
+            self.current_column_values.append(str(self.champions_played.pop(champ_name)))
+        self.columns.append(self.current_column)
+        self.columns.append(self.current_column_values)
 
-                        # Remove last champ if list was full
-                        if len(current_games_played) > amount:
-                            current_champion_names.pop(len(current_champion_names) - 1)
-                            current_games_played.pop(len(current_games_played) - 1)
-                        break
+    def get_recent_champions(self):
+        """
+        Count the number of champions recently played by the current player
+        """
+        for match in self.match_history:
+            self.current_match = match
+            self.determine_champion_played()
 
-                    # Add to end if not higher than any and list isn't full
-                    elif amount > len(current_games_played) == (games_played_cnt + 1):
-                        current_champion_names.append(champion)
-                        current_games_played.append(new_games_played)
-                        break
-
-        # Replace old dictionary with sorted values
-        champ_names[player] = {'Names': current_champion_names, 'Games': current_games_played}
-
-    # Return the champion names
-    return champ_names
-
-
-# Format the table accordingly
-def format_table(recent_champions):
-
-    # Loop through each player
-    for player_name in recent_champions:
-
-        # Loop through each champion
-        for games_played_cnt, games_played in enumerate(recent_champions[player_name]['Games']):
-
-            # Get the champ name
-            champ_name = recent_champions[player_name]['Names'][games_played_cnt]
-
-            # Over 25 games and shared
-            if games_played > 25 and len(champ_name.split(':')) > 1:
-                recent_champions[player_name]['Names'][games_played_cnt] = f'2S:{champ_name.split(":")[0]}2S:'
-
-            # Over 25
-            elif games_played > 25:
-                recent_champions[player_name]['Names'][games_played_cnt] = f'2 :{champ_name.split(":")[0]}2 :'
-
-            # Over 10 and shared
-            elif games_played > 10 and len(champ_name.split(':')) > 1:
-                recent_champions[player_name]['Names'][games_played_cnt] = f'1S:{champ_name.split(":")[0]}1S:'
-
-            # Over 10
-            elif games_played > 10:
-                recent_champions[player_name]['Names'][games_played_cnt] = f'1 :{champ_name.split(":")[0]}1 :'
-
-            # If shared champ
-            elif len(champ_name.split(':')) > 1:
-                recent_champions[player_name]['Names'][games_played_cnt] = f'_S:{champ_name.split(":")[0]}_S:'
-
-    # Return the recent champions
-    return recent_champions
-
-
-# Get the shared champions played
-def get_shared_champs(recent_champions):
-
-    # Get the player names
-    player_names = [name for name in recent_champions]
-
-    # Highlight if multiple players play the same champion
-    for player_name_cnt, player_name in enumerate(recent_champions):
-
-        # Break if last list since already compared
-        if player_name_cnt == len(recent_champions):
-            break
-
-        # Remove current player from the comparison list
-        player_names.remove(player_name)
-
-        # Cycle through each champion the player plays
-        for recent_champions_cnt, champion_name in enumerate(recent_champions[player_name]['Names']):
-
-            # Loop through each champion on the list
-            for champ_list_cnt, other_player in enumerate(player_names):
-
-                # Check other lists for matches
-                for other_list_cnt, other_champion in enumerate(recent_champions[other_player]['Names']):
-
-                    # Remove the brackets for comparison
-                    orig_champion = champion_name.split(':')[0]
-
-                    # Remove the brackets for comparison
-                    orig_other_champion = other_champion.split(':')[0]
-
-                    # Check if they match
-                    if orig_champion == orig_other_champion:
-
-                        # Check if it already matched
-                        if 'match' not in champion_name.split(':'):
-                            # Adjust the first champ
-                            recent_champions[player_name]['Names'][recent_champions_cnt] = f'{champion_name}:match'
-
-                        # Check if it already matched
-                        if 'match' not in other_champion.split(':'):
-                            # Adjust second champ
-                            recent_champions[other_player]['Names'][other_list_cnt] = f'{other_champion}:match'
-                            break
-
-    # Return the mastery_list
-    return recent_champions
-
-
-# Get the recent champion table
-def recent_champion_table():
-
-    # Create a rr_table
-    rc_table = prettytable.PrettyTable()
-
-    # Number of champs to grab
-    amount = 10
-
-    # Get the player's match history
-    match_history = globals.player_match_history
-
-    # Get the most recent champs
-    recent_champions = get_recent_champs(match_history, amount)
-
-    # Get shared champs
-    recent_champions = get_shared_champs(recent_champions)
-
-    # Format table
-    recent_champions = format_table(recent_champions)
-
-    # Create the table
-    for player_name in recent_champions:
-
-        # Check if the player doesn't have 10 different champs played
-        if len(recent_champions[player_name]['Names']) < amount:
-            
-            # Insert nothing into the list
-            while len(recent_champions[player_name]['Names']) < amount:
-                recent_champions[player_name]['Names'].append('')
-        rc_table.add_column(player_name, recent_champions[player_name]['Names'])
-
-    return rc_table
+    def determine_champion_played(self):
+        """
+        Determine the champion played int he current game
+        """
+        for champion_name in self.champion_info:
+            if str(self.current_match['champion']) == self.champion_info[champion_name]['key']:
+                self.champions_played[champion_name] = self.champions_played.get(champion_name, 0) + 1
