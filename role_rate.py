@@ -2,7 +2,7 @@
 The file will grab the information required to create the roll rate table
 """
 
-import prettytable
+import sys
 
 from text_to_image import CreateImage
 
@@ -40,7 +40,8 @@ class RoleRate:
             'MID': 'mid',
             'BOTTOM': 'bot',
             'DUO': 'bot',
-            'DUO_SUPPORT': 'sup'
+            'DUO_SUPPORT': 'sup',
+            'NONE': 'jng'
         }
 
         self.setup()
@@ -143,4 +144,4 @@ class RoleRate:
         elif self.current_match['role'] in self.role_ids:
             self.player_roles[self.role_ids[self.current_match['role']]] += 1
         else:
-            print(f'{self.current_match["role"]} - {self.current_match["lane"]}')
+            print(f'Undetermined role:\t{self.current_match["role"]} - {self.current_match["lane"]}', file=sys.stderr)
