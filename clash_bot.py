@@ -100,9 +100,9 @@ class ClashBot:
         """
         self.legend = f'--------------------------------------------------------------------\n' \
                       f'Ban List Legend:' \
-                      f'\n\t- {self.severity[0]}:\t+11% of top 10 score' \
-                      f'\n\t- {self.severity[1]}:\t+10% of top 10 score' \
-                      f'\n\t- {self.severity[2]}:\t+9% of top 10 score'
+                      f'\n\t- {self.severity[0]}:\t+9% of top 15 score' \
+                      f'\n\t- {self.severity[1]}:\t+8% of top 15 score' \
+                      f'\n\t- {self.severity[2]}:\t+6% of top 15 score'
         combined_tables = [[self.mastery_shared.columns[::2], self.mastery_shared.colour_columns[::2]],
                            [self.recent_champion.columns[::2], self.recent_champion.colour_columns[::2]],
                            [self.clash_ranked.columns[::2], self.clash_ranked.colour_columns[::2]]]

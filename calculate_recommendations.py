@@ -52,7 +52,7 @@ class CalculateBanRecommendations:
         """
         Create a list of the top 10 champs and colour them accordingly
         """
-        self.get_top_ten_champs()
+        self.get_top_champs()
         self.colour_top_ten_champs()
 
     def colour_top_ten_champs(self):
@@ -63,22 +63,22 @@ class CalculateBanRecommendations:
         colours = []
         for points in self.points_column:
             points = float(points)
-            if points > self.total_ban_points * 0.11:
+            if points > self.total_ban_points * 0.09:
                 colours.append('red')
-            elif points > self.total_ban_points * 0.10:
+            elif points > self.total_ban_points * 0.08:
                 colours.append('orange')
-            elif points > self.total_ban_points * 0.09:
+            elif points > self.total_ban_points * 0.06:
                 colours.append('yellow')
             else:
                 colours.append('')
         self.colour_columns.append(colours)
         self.colour_columns.append(colours)
 
-    def get_top_ten_champs(self):
+    def get_top_champs(self):
         """
-        Get the 10 highest scoring champs
+        Get the 15 highest scoring champs
         """
-        for _ in range(10):
+        for _ in range(15):
             champ_name = max(self.ban_dict.items(), key=operator.itemgetter(1))[0]
             points = str(self.ban_dict.pop(champ_name))
             self.champion_column.append(champ_name)
