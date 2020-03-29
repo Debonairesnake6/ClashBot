@@ -17,15 +17,19 @@ class APIQueries:
     """
     Run and save each API query
     """
-    def __init__(self, player_list: list):
+    def __init__(self, player_list: list, clash_api: bool = False):
         """
         Run and save each API query
 
         :param player_list: List of each player to process
+        :param clash_api: If using the clash api the player list should only contain a single player
         """
         # Placeholder variables
         self.response = None
         self.champion_info = None
+        self.clash_team_id = None
+        self.clash_team_members = None
+        self.clash_api = clash_api
         self.titles = []
         self.player_list = player_list
         self.base_url = 'https://na1.api.riotgames.com'
@@ -34,7 +38,8 @@ class APIQueries:
             'player_not_found': [],
             'no_ranked_clash': [],
             'no_match_history': [],
-            'no_ranked_info': []
+            'no_ranked_info': [],
+            'no_clash_team': []
         }
         self.queue_id = {
             'norm_draft': '&queue=400',
@@ -66,15 +71,98 @@ class APIQueries:
         # Store the information from the queries
         self.player_information = {}
 
-        self.process_each_player()
+        # Grab information based on the given player list
+        if self.clash_api:
+            self.use_clash_api()
+        else:
+            self.process_each_player()
 
-    def process_each_player(self):
+    def use_clash_api(self):
+        """
+        Use the clash API based on the given player
+        """
+        self.process_each_player()
+        for player in self.player_information:
+            self.player_list = [player]
+        self.get_clash_team_id()
+        self.process_each_clash_member()
+        self.get_locked_in_position()
+        self.change_order_by_position()
+
+    def change_order_by_position(self):
+        """
+        Reorder the dictionary based on the position each player plays
+        """
+        new_order = []
+        for position in ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY']:
+            for player in self.player_information:
+                if self.player_information[player]['position'] == position:
+                    new_order.append(player)
+
+        player_information_copy = self.player_information.copy()
+        self.player_information = {}
+        for player in new_order:
+            self.player_information[player] = player_information_copy[player]
+
+        self.titles = []
+        for player in self.player_information:
+            self.titles.append(player)
+
+    def get_locked_in_position(self):
+        """
+        Use the add the player's locked in position to the player_information dictionary
+        """
+        for player in self.player_information:
+            for team_member in self.clash_team_members:
+                if self.player_information[player]['id'] == team_member['summonerId']:
+                    self.player_information[player]['position'] = team_member['position']
+
+    def process_each_clash_member(self):
+        """
+        Grab the information from each clash member found
+        """
+        for player in self.clash_team_members:
+            self.get_summoner_id(player['summonerId'], query_type='')
+        for player in self.player_information:
+            self.get_non_random_match_history(player)
+            self.get_player_ranked_clash_match_history(player)
+            self.get_player_champion_mastery(player)
+            self.get_ranked_information(player)
+
+    def get_clash_team_id(self):
+        """
+        Get the clash team id for the given player
+        """
+        try:
+            clash_team_info = self.get_json(f'{self.base_url}/lol/clash/v1/players/by-summoner/'
+                                            f'{self.player_information[self.player_list[0]]["id"]}{self.api_key}')
+        except HTTPError:
+            self.errors['no_clash_team'].append(self.player_list[0])
+        else:
+            self.get_clash_team_players(clash_team_info[0]['teamId'])
+
+    def get_clash_team_players(self, clash_team_id: str):
+        """
+        Get the clash team players for the given team id
+
+        :param clash_team_id: Id of the clash team to scrape info from
+        """
+        try:
+            clash_team_info = self.get_json(f'{self.base_url}/lol/clash/v1/teams/{clash_team_id}{self.api_key}')
+        except HTTPError:
+            self.errors['no_clash_team'].append(self.player_list[0])
+        else:
+            self.clash_team_members = clash_team_info['players']
+
+    def process_each_player(self, query_type: str = 'by-name/'):
         """
         Run the API queries for each player given
+
+        :param query_type: Type of query to run to grab summoner id information
         """
         self.get_all_champion_info()
         for player in self.player_list:
-            self.get_summoner_id(player)
+            self.get_summoner_id(player, query_type)
             if player in self.player_information:
                 self.get_non_random_match_history(player)
                 self.get_player_ranked_clash_match_history(player)
@@ -127,22 +215,26 @@ class APIQueries:
                 self.player_information[player]['ranked_info']['queue_rank'] = self.queue_ranks[queue_type['rank']]
                 self.player_information[player]['ranked_info']['rank'] = queue_type['rank']
 
-    def get_summoner_id(self, player: str):
+    def get_summoner_id(self, player: str, query_type: str):
         """
         Get the summoner id for the given player
 
         :param player: Player name
+        :param query_type: Indicate querying by name or by ID
         """
-        player_name_url_encoded = urllib.parse.quote(player)
+        if query_type == 'by-name/':
+            player_name_url_encoded = urllib.parse.quote(player)
+        else:
+            player_name_url_encoded = player
         try:
-            summoner_info = self.get_json(f'{self.base_url}/lol/summoner/v4/summoners/by-name/{player_name_url_encoded}'
-                                          f'{self.api_key}')
+            summoner_info = self.get_json(f'{self.base_url}/lol/summoner/v4/summoners/{query_type}'
+                                          f'{player_name_url_encoded}{self.api_key}')
         except HTTPError:
             self.errors['player_not_found'].append(player)
         else:
-            self.player_information[player] = {'id': summoner_info['id'],
-                                               'accountId': summoner_info['accountId']}
-            self.titles.append(player)
+            self.player_information[summoner_info['name']] = {'id': summoner_info['id'],
+                                                              'accountId': summoner_info['accountId']}
+            self.titles.append(summoner_info['name'])
 
     def get_non_random_match_history(self, player: str):
         """
@@ -264,6 +356,5 @@ class APIQueries:
 
 
 if __name__ == '__main__':
-    tmp = APIQueries(['Debonairesnake6', 'In Vänity', 'Wosko', 'Smol Squish', 'Ori Bot'])
-    tmp.process_each_player()
+    tmp = APIQueries(['DebonaireSnake6'], True)
     print()

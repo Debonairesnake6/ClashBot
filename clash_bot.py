@@ -6,6 +6,8 @@ import api_queries
 
 from discord import File
 from discord.ext import commands
+from discord import ActivityType
+from discord import Activity
 from calculate_recommendations import CalculateBanRecommendations
 from mastery_shared import MasteryShared
 from role_rate import RoleRate
@@ -177,7 +179,7 @@ class ClashBot:
         """
         Get all of the different types of tables for each player given
         """
-        await self.get_player_ranks_table()
+        await self.get_player_ranks_table()  # todo add player role table
         await self.get_role_rate_table()
         await self.get_mastery_shared_table()
         await self.get_recent_champion_table()
@@ -210,11 +212,13 @@ class ClashBot:
         await self.message.channel.send(f'Attempting to create tables for:\n'
                                         f'\t-\t{player_message}')
 
-    def get_api_information_for_each_player(self):
+    def get_api_information_for_each_player(self, clash_api: bool = False):
         """
         Run the API queries for each player
+
+        :param clash_api: If using a single player to leverage the clash API
         """
-        self.api_info = api_queries.APIQueries(self.player_list)
+        self.api_info = api_queries.APIQueries(self.player_list, clash_api)
 
     async def process_discord_message(self):
         """
@@ -222,6 +226,20 @@ class ClashBot:
         """
         await self.parse_discord_message()
         self.get_api_information_for_each_player()
+        await self.get_all_tables()
+
+    def parse_discord_message_single_player(self):
+        """
+        Parse the discord message to extract the single player name given
+        """
+        self.player_list = self.message.content.strip().split()[1:]
+
+    async def process_discord_message_single_player(self):
+        """
+        Process the given discord message for the single player given
+        """
+        self.parse_discord_message_single_player()
+        self.get_api_information_for_each_player(clash_api=True)
         await self.get_all_tables()
 
     def start_bot(self):
@@ -247,9 +265,19 @@ class ClashBot:
                                            '\t-\tInsert each summoner name separated by a comma.\n'
                                            '\t-\tThis will pull every table for all of the given summoners in NA.\n'
                                            '\t-\tYou do not need to put all 5 summoner names.')
-            elif message.content[:6] == '!clash':
+            elif message.content[:7] == '!clash ':
                 self.message = message
                 await self.process_discord_message()
+            elif message.content[:13] == '!clash_single':
+                self.message = message
+                await self.process_discord_message_single_player()
+
+        @self.bot.event
+        async def on_ready():
+            """
+            Set the bot status on discord
+            """
+            await self.bot.change_presence(activity=Activity(type=ActivityType.playing, name='!clash help'))
 
         # Run the bot
         if os.name == 'nt':
