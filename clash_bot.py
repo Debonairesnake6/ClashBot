@@ -101,11 +101,11 @@ class ClashBot:
         self.legend = f'--------------------------------------------------------------------\n' \
                       f'Ban List Legend:' \
                       f'\n\t- {self.severity[0]}:\t+9% of top 15 score' \
-                      f'\n\t- {self.severity[1]}:\t+8% of top 15 score' \
-                      f'\n\t- {self.severity[2]}:\t+6% of top 15 score'
-        combined_tables = [[self.mastery_shared.columns[::2], self.mastery_shared.colour_columns[::2]],
-                           [self.recent_champion.columns[::2], self.recent_champion.colour_columns[::2]],
-                           [self.clash_ranked.columns[::2], self.clash_ranked.colour_columns[::2]]]
+                      f'\n\t- {self.severity[1]}:\t+7% of top 15 score' \
+                      f'\n\t- {self.severity[2]}:\t+5% of top 15 score'
+        combined_tables = [[self.mastery_shared.columns, self.mastery_shared.colour_columns],
+                           [self.recent_champion.columns, self.recent_champion.colour_columns],
+                           [self.clash_ranked.columns, self.clash_ranked.colour_columns]]
         CalculateBanRecommendations(combined_tables)
         await self.post_to_discord()
 
