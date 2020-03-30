@@ -49,7 +49,7 @@ class CalculateBanRecommendations:
         """
         Create image from the processed results
         """
-        CreateImage(self.titles, self.columns, 'extra_files/ban_recommendations.png',
+        CreateImage(self.titles, self.columns, '../extra_files/ban_recommendations.png',
                     colour=self.colour_columns, convert_columns=True)
 
     def process_top_ten_champs(self):
@@ -152,7 +152,7 @@ class CalculateBanRecommendations:
 
         :param column: List containing a column
         """
-        self.column_total_value = sum([int(value) for value in column])
+        self.column_total_value = sum([int(value) for value in column if value != ''])
 
     def calculate_points(self):
         """
@@ -180,7 +180,7 @@ class CalculateBanRecommendations:
 
 if __name__ == '__main__':
     from api_queries import APIQueries
-    shelf = shelve.open('my_api')
+    shelf = shelve.open('../extra_files/my_api')
     shelf = dict(shelf)['combined_tables']
     calc = CalculateBanRecommendations(shelf)
     print()

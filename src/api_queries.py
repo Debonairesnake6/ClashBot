@@ -8,6 +8,7 @@ import urllib.request
 
 from dotenv import load_dotenv
 from urllib.error import HTTPError
+from role_rate import RoleRate
 
 # Load environment variables
 load_dotenv()
@@ -39,7 +40,8 @@ class APIQueries:
             'no_ranked_clash': [],
             'no_match_history': [],
             'no_ranked_info': [],
-            'no_clash_team': []
+            'no_clash_team': [],
+            'no_champion_mastery': []
         }
         self.queue_id = {
             'norm_draft': '&queue=400',
@@ -93,17 +95,76 @@ class APIQueries:
         """
         Reorder the dictionary based on the position each player plays
         """
+        new_order, roles_found = self.get_new_order()
+        new_order = self.place_filled_players(new_order, roles_found)
+        self.switch_to_new_order(new_order)
+        self.fix_titles()
+
+    def get_new_order(self):
+        """
+        Get the new order based on the positions locked in
+        """
         new_order = []
+        roles_found = []
         for position in ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY']:
             for player in self.player_information:
                 if self.player_information[player]['position'] == position:
                     new_order.append(player)
+                    roles_found.append(position)
+        return new_order, roles_found
 
+    def place_filled_players(self, new_order: list, roles_found: list):
+        """
+        Add players into the new order who locked in as fill
+
+        :param new_order: Player names in order of position
+        :param roles_found: Roles successfully grabbed
+        """
+        if len(roles_found) == 5:
+            return new_order
+        elif len(roles_found) == 4:
+            for cnt, position in enumerate(['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY']):
+                if position not in roles_found:
+                    new_order.insert(cnt, [player for player in self.player_information if player not in new_order][0])
+                    return new_order
+        else:
+            role_calc = RoleRate(just_using_functions=True)
+            missing_players = {}
+            missing_roles = [role for role in ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'] if role not in roles_found]
+            for player in [player for player in self.player_information if player not in new_order]:
+                role_calc.match_history = self.player_information[player]['ranked_match_history']
+                role_calc.calculate_all_roles()
+                missing_players[player] = {'TOP': role_calc.player_roles['top'],
+                                           'JUNGLE': role_calc.player_roles['jng'],
+                                           'MIDDLE': role_calc.player_roles['mid'],
+                                           'BOTTOM': role_calc.player_roles['bot'],
+                                           'UTILITY': role_calc.player_roles['sup']}
+            for role in missing_roles:
+                role_score = {}
+                for player in missing_players:
+                    role_score[player] = missing_players[player][role] - sum([missing_players[player][position] for
+                                                                              position in missing_players[player] if
+                                                                              position in missing_roles and position
+                                                                              != role])
+                new_order.insert(['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'].index(role), max(role_score))
+                missing_players.pop(max(role_score))
+            return new_order
+
+    def switch_to_new_order(self, new_order: list):
+        """
+        Switch the current order to the new on
+
+        :param new_order: Player names in order of position
+        """
         player_information_copy = self.player_information.copy()
         self.player_information = {}
         for player in new_order:
             self.player_information[player] = player_information_copy[player]
 
+    def fix_titles(self):
+        """
+        Set the titles in the new order
+        """
         self.titles = []
         for player in self.player_information:
             self.titles.append(player)
@@ -162,7 +223,7 @@ class APIQueries:
         """
         self.get_all_champion_info()
         for player in self.player_list:
-            self.get_summoner_id(player, query_type)
+            player = self.get_summoner_id(player, query_type)
             if player in self.player_information:
                 self.get_non_random_match_history(player)
                 self.get_player_ranked_clash_match_history(player)
@@ -221,6 +282,7 @@ class APIQueries:
 
         :param player: Player name
         :param query_type: Indicate querying by name or by ID
+        :return: Correct case name of the player
         """
         if query_type == 'by-name/':
             player_name_url_encoded = urllib.parse.quote(player)
@@ -235,6 +297,7 @@ class APIQueries:
             self.player_information[summoner_info['name']] = {'id': summoner_info['id'],
                                                               'accountId': summoner_info['accountId']}
             self.titles.append(summoner_info['name'])
+            return summoner_info['name']
 
     def get_non_random_match_history(self, player: str):
         """
@@ -313,11 +376,11 @@ class APIQueries:
         """
         Get all of the latest champion info from the data dragon or saved file
         """
-        self.create_folder_if_it_does_not_exists('extra_files')
+        self.create_folder_if_it_does_not_exists('../extra_files')
 
         # If there is already a saved file
-        if os.path.isfile('extra_files/champion_info.json'):
-            with open('extra_files/champion_info.json') as champion_info_file:
+        if os.path.isfile('../extra_files/champion_info.json'):
+            with open('../extra_files/champion_info.json') as champion_info_file:
                 self.champion_info = json.load(champion_info_file)
 
         # If a new download is needed
@@ -331,7 +394,7 @@ class APIQueries:
         version = self.get_json('http://ddragon.leagueoflegends.com/api/versions.json')[0]
         self.champion_info = self.get_json(f'http://ddragon.leagueoflegends.com/cdn/'
                                            f'{version}/data/en_US/champion.json')['data']
-        with open('extra_files/champion_info.json', 'w') as champion_info_file:
+        with open('../extra_files/champion_info.json', 'w') as champion_info_file:
             json.dump(self.champion_info, champion_info_file)
 
     @staticmethod

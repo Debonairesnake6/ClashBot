@@ -13,6 +13,7 @@ from mastery_shared import MasteryShared
 from role_rate import RoleRate
 from recent_champion import RecentChampion
 from player_ranks import PlayerRanks
+from player_locked_in_position import PlayerLockedInPosition
 
 
 class ClashBot:
@@ -96,6 +97,15 @@ class ClashBot:
         self.player_ranks = PlayerRanks(self.api_info)
         await self.post_to_discord()
 
+    async def get_player_locked_in_position(self):
+        """
+        Parse the player list to get the lock in position table
+        """
+        self.legend = f'--------------------------------------------------------------------\n' \
+                      f'Player Position Table:'
+        PlayerLockedInPosition(self.api_info)
+        await self.post_to_discord()
+
     async def get_ban_recommendation_table(self):
         """
         Parse the player list to generate the ban recommendation table
@@ -116,11 +126,11 @@ class ClashBot:
         Post the gathered information to discord
         """
         message_sent = False
-        for _, _, filenames in os.walk('extra_files'):
+        for _, _, filenames in os.walk('../extra_files'):
             for file in filenames:
                 if file[-4:] == '.png':
-                    await self.message.channel.send(self.legend, file=File(f'extra_files/{file}', filename=file))
-                    os.remove(f'extra_files/{file}')
+                    await self.message.channel.send(self.legend, file=File(f'../extra_files/{file}', filename=file))
+                    os.remove(f'../extra_files/{file}')
                     message_sent = True
 
         if not message_sent:
@@ -175,11 +185,15 @@ class ClashBot:
         if failure_message != 'The given player(s) have no match history:\n':
             await self.message.channel.send(failure_message)
 
-    async def get_all_tables(self):
+    async def get_all_tables(self, display_positions: bool = False):
         """
         Get all of the different types of tables for each player given
+
+        :param display_positions: Display the locked in positions table if using the clash API
         """
-        await self.get_player_ranks_table()  # todo add player role table
+        await self.get_player_ranks_table()
+        if display_positions:
+            await self.get_player_locked_in_position()
         await self.get_role_rate_table()
         await self.get_mastery_shared_table()
         await self.get_recent_champion_table()
@@ -228,19 +242,20 @@ class ClashBot:
         self.get_api_information_for_each_player()
         await self.get_all_tables()
 
-    def parse_discord_message_single_player(self):
+    async def parse_discord_message_single_player(self):
         """
         Parse the discord message to extract the single player name given
         """
         self.player_list = self.message.content.strip().split()[1:]
+        await self.message.channel.send(f'Attempting to create tables for {self.player_list[0]}\'s clash team.')
 
     async def process_discord_message_single_player(self):
         """
         Process the given discord message for the single player given
         """
-        self.parse_discord_message_single_player()
+        await self.parse_discord_message_single_player()
         self.get_api_information_for_each_player(clash_api=True)
-        await self.get_all_tables()
+        await self.get_all_tables(display_positions=True)
 
     def start_bot(self):
         """
@@ -254,21 +269,28 @@ class ClashBot:
             :param message: Context of the message
             """
             if message.content == '!clash help':
-                await message.channel.send(''
-                                           'Clash Bot commands:\n\n'
-                                           ''
+                await message.channel.send('Clash Bot commands:\n'
+                                           '```'
                                            '!clash\n'
-                                           '\t-\tBasic command to pull all of the tables from the default list.\n'
-                                           '\t-\tDebonairesnake6, In Vänity, Wosko, Smol Squish, Ori Bot.\n\n'
+                                           '-\tBasic command to pull all of the tables from the default list of:\n'
+                                           '-\tDebonairesnake6, In Vänity, Wosko, Smol Squish, Ori Bot.\n\n'
+                                           ''
+                                           '!clash_team [player1]\n'
+                                           '-\tInsert a single player name on the enemy team.\n'
+                                           '-\tThis will grab all of the players on their clash team.\n'
+                                           '-\tIt will also order the summoners by their role (Top --> Support).\n'
+                                           '-\tIf players are locked in as fill it will attempt to display their '
+                                           'correct position.\n\n'
                                            ''
                                            '!clash [player1], [player2], [player3], [player4], [player5]\n'
-                                           '\t-\tInsert each summoner name separated by a comma.\n'
-                                           '\t-\tThis will pull every table for all of the given summoners in NA.\n'
-                                           '\t-\tYou do not need to put all 5 summoner names.')
+                                           '-\tInsert each summoner name separated by a comma.\n'
+                                           '-\tThis will pull every table for all of the given summoners in NA.\n'
+                                           '-\tYou can use up to 5 summoner names.\n\n'
+                                           '```')
             elif message.content[:7] == '!clash ':
                 self.message = message
                 await self.process_discord_message()
-            elif message.content[:13] == '!clash_single':
+            elif message.content[:11] == '!clash_team':
                 self.message = message
                 await self.process_discord_message_single_player()
 
@@ -277,11 +299,11 @@ class ClashBot:
             """
             Set the bot status on discord
             """
+            if os.name == 'nt':
+                print('Ready')
             await self.bot.change_presence(activity=Activity(type=ActivityType.playing, name='!clash help'))
 
         # Run the bot
-        if os.name == 'nt':
-            print('Ready')
         self.bot.run(os.getenv('DISCORD_TOKEN'))
 
 

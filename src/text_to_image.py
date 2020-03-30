@@ -146,7 +146,7 @@ class TableToImage:
             'red': (255, 0, 0),
             'orange': (255, 106, 0),
             'yellow': (255, 255, 0),
-            'blue': (0, 102, 255),
+            'blue': (50, 150, 255),
             'green': (0, 153, 51),
             'iron': (91, 82, 83),
             'bronze': (136, 75, 48),
@@ -249,7 +249,7 @@ if __name__ == '__main__':
     # print()
 
     import shelve
-    create_image_copy = dict(shelve.open('my_api')['title_colours'])
+    create_image_copy = dict(shelve.open('../extra_files/my_api')['title_colours'])
     titles = ['Debonairesnake6', '#1', 'In Vänity', '#2', 'Wosko', '#3', 'Smol Squish', '#4', 'Ori Bot', '#5']
     title_colours = ['iron', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'master', 'grandmaster', 'challenger', 'iron']
     new = TableToImage(create_image_copy['table'], create_image_copy['table_colour'],

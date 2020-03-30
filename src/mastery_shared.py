@@ -45,7 +45,7 @@ class MasteryShared:
         """
         Create image from the processed results
         """
-        CreateImage(self.titles, self.columns, 'extra_files/mastery_shared.png',
+        CreateImage(self.titles, self.columns, '../extra_files/mastery_shared.png',
                     colour=self.colour_columns, convert_columns=True, title_colours=self.title_colours)
 
     def adjust_titles(self):

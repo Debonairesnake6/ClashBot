@@ -11,12 +11,13 @@ class RoleRate:
     """
     Handle creating the roll rate table
     """
-    def __init__(self, api_results: object, title_colours: list):
+    def __init__(self, api_results: object = None, title_colours: list = [], just_using_functions: bool = False):
         """
         Handle creating the role rate table
 
         :param api_results: Results from the api_queries file
         :param title_colours: What to colour each title based ont eh player's rank
+        :param just_using_functions: If the intention is to use functions rather than create an image
         """
         self.api_results = api_results
         self.title_colours = title_colours[:]
@@ -44,7 +45,8 @@ class RoleRate:
             'NONE': 'jng'
         }
 
-        self.setup()
+        if not just_using_functions:
+            self.setup()
 
     def setup(self):
         """
@@ -57,7 +59,7 @@ class RoleRate:
         """
         Create the image from the processed results
         """
-        CreateImage(self.titles, self.columns, 'extra_files/roll_rate.png',
+        CreateImage(self.titles, self.columns, '../extra_files/roll_rate.png',
                     colour=self.colour_columns, convert_columns=True, title_colours=self.title_colours)
 
     def create_roll_rate_table(self):

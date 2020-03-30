@@ -39,7 +39,7 @@ class PlayerRanks:
         """
         Create the image from the processed results
         """
-        CreateImage(self.titles, self.columns, 'extra_files/player_ranks.png',
+        CreateImage(self.titles, self.columns, '../extra_files/player_ranks.png',
                     colour=self.colour_columns, convert_columns=True)
 
     def process_every_player(self):
