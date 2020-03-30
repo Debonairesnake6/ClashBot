@@ -177,7 +177,7 @@ class TableToImage:
         self.img = Image.new('RGB', ((columns * 12) + 24, rows * 21 + 48), color=(54, 57, 63))
 
         # Initialize font and drawing object
-        self.font = ImageFont.truetype('extra_files/cour.ttf', 20)
+        self.font = ImageFont.truetype('../extra_files/cour.ttf', 20)
         self.draw = ImageDraw.Draw(self.img)
 
         # Draw the table without markings
