@@ -246,7 +246,7 @@ class ClashBot:
         """
         Parse the discord message to extract the single player name given
         """
-        self.player_list = self.message.content.strip().split()[1:]
+        self.player_list = [' '.join(self.message.content.strip().split()[1:])]
         await self.message.channel.send(f'Attempting to create tables for {self.player_list[0]}\'s clash team.')
 
     async def process_discord_message_single_player(self):
