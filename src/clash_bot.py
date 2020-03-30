@@ -293,6 +293,8 @@ class ClashBot:
             elif message.content[:11] == '!clash_team':
                 self.message = message
                 await self.process_discord_message_single_player()
+            elif message.content[:6] == '!clash':
+                await message.channel.send('Unknown command. Use "!clash help" for the available options.')
 
         @self.bot.event
         async def on_ready():
