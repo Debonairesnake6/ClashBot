@@ -11,7 +11,7 @@ class RoleRate:
     """
     Handle creating the roll rate table
     """
-    def __init__(self, api_results: object = None, title_colours: list = [], just_using_functions: bool = False):
+    def __init__(self, api_results: object = None, title_colours: list = None, just_using_functions: bool = False):
         """
         Handle creating the role rate table
 
@@ -19,6 +19,8 @@ class RoleRate:
         :param title_colours: What to colour each title based ont eh player's rank
         :param just_using_functions: If the intention is to use functions rather than create an image
         """
+        if title_colours is None:
+            title_colours = []
         self.api_results = api_results
         self.title_colours = title_colours[:]
         self.titles = None
@@ -30,19 +32,20 @@ class RoleRate:
         self.player_roles = None
         self.current_match = None
         self.player_games_played = None
+        self.player_name = None
         self.role_ids = {
-            'SOLO - TOP': 'top',
-            'SOLO - MID': 'mid',
-            'NONE - JUNGLE': 'jng',
-            'DUO_CARRY - BOTTOM': 'bot',
-            'DUO_SUPPORT - BOTTOM': 'sup',
-            'TOP': 'top',
-            'JUNGLE': 'jng',
-            'MID': 'mid',
-            'BOTTOM': 'bot',
-            'DUO': 'bot',
-            'DUO_SUPPORT': 'sup',
-            'NONE': 'jng'
+            'SOLO - TOP': 'TOP',
+            'SOLO - MID': 'MIDDLE',
+            'NONE - JUNGLE': 'JUNGLE',
+            'DUO_CARRY - BOTTOM': 'BOTTOM',
+            'DUO_SUPPORT - BOTTOM': 'UTILITY',
+            'TOP': 'TOP',
+            'JUNGLE': 'JUNGLE',
+            'MID': 'MIDDLE',
+            'BOTTOM': 'BOTTOM',
+            'DUO': 'BOTTOM',
+            'DUO_SUPPORT': 'UTILITY',
+            'NONE': 'JUNGLE'
         }
 
         if not just_using_functions:
@@ -73,6 +76,9 @@ class RoleRate:
 
         # Collect the play rate information
         for player in self.api_results.player_information:
+            self.player_name = player
+            self.api_results.player_information[self.player_name]['position_champions'] = {}
+
             try:
                 self.match_history = self.api_results.player_information[player]['all_match_history']
 
@@ -118,11 +124,11 @@ class RoleRate:
         Calculate the roles for the current player
         """
         self.player_roles = {
-            'top': 0,
-            'jng': 0,
-            'mid': 0,
-            'bot': 0,
-            'sup': 0
+            'TOP': 0,
+            'JUNGLE': 0,
+            'MIDDLE': 0,
+            'BOTTOM': 0,
+            'UTILITY': 0
         }
 
         # Get the role for each game
@@ -131,9 +137,9 @@ class RoleRate:
             self.determine_role_played()
 
         # Add the final list to the columns set
-        self.columns.append([str(self.player_roles['top']), str(self.player_roles['jng']),
-                             str(self.player_roles['mid']), str(self.player_roles['bot']),
-                             str(self.player_roles['sup'])])
+        self.columns.append([str(self.player_roles['TOP']), str(self.player_roles['JUNGLE']),
+                             str(self.player_roles['MIDDLE']), str(self.player_roles['BOTTOM']),
+                             str(self.player_roles['UTILITY'])])
 
     def determine_role_played(self):
         """
@@ -141,9 +147,27 @@ class RoleRate:
         """
         if f'{self.current_match["role"]} - {self.current_match["lane"]}' in self.role_ids:
             self.player_roles[self.role_ids[f'{self.current_match["role"]} - {self.current_match["lane"]}']] += 1
+            self.track_champions_played_in_locked_in_position(self.role_ids[f'{self.current_match["role"]} - '
+                                                                            f'{self.current_match["lane"]}'])
         elif self.current_match['lane'] in self.role_ids:
             self.player_roles[self.role_ids[self.current_match['lane']]] += 1
+            self.track_champions_played_in_locked_in_position(self.role_ids[self.current_match['lane']])
         elif self.current_match['role'] in self.role_ids:
             self.player_roles[self.role_ids[self.current_match['role']]] += 1
+            self.track_champions_played_in_locked_in_position(self.role_ids[self.current_match['role']])
         else:
             print(f'Undetermined role:\t{self.current_match["role"]} - {self.current_match["lane"]}', file=sys.stderr)
+
+    def track_champions_played_in_locked_in_position(self, position: str):
+        """
+        Keep track of the champions played in the locked in position for clash
+
+        :param position: Position the player locked in
+        """
+        if 'position' in self.api_results.player_information[self.player_name] \
+                and position == self.api_results.player_information[self.player_name]['position']:
+            for champion_name in self.api_results.champion_info:
+                if str(self.current_match['champion']) == self.api_results.champion_info[champion_name]['key']:
+                    self.api_results.player_information[self.player_name]['position_champions'][champion_name] = \
+                        self.api_results.player_information[self.player_name]['position_champions'].get(champion_name,
+                                                                                                        0) + 1

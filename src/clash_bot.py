@@ -14,6 +14,7 @@ from role_rate import RoleRate
 from recent_champion import RecentChampion
 from player_ranks import PlayerRanks
 from player_locked_in_position import PlayerLockedInPosition
+from champions_for_role import ChampionsForRole
 
 
 class ClashBot:
@@ -34,6 +35,7 @@ class ClashBot:
         self.recent_champion = None
         self.clash_ranked = None
         self.player_ranks = None
+        self.champions_for_role = None
 
     async def get_role_rate_table(self):
         """
@@ -106,9 +108,25 @@ class ClashBot:
         PlayerLockedInPosition(self.api_info)
         await self.post_to_discord()
 
-    async def get_ban_recommendation_table(self):
+    async def get_champions_for_locked_in_role(self):
+        """
+        Get the table to display played champions in the locked in role
+        """
+        self.legend = f'--------------------------------------------------------------------\n' \
+                      f'Recent Champions For Locked In Role:' \
+                      f'\n\t- {self.severity[0]}:\t+25% total games and shared champ' \
+                      f'\n\t- {self.severity[1]}:\t+25% total games' \
+                      f'\n\t- {self.severity[2]}:\t+16% total games and shared champ' \
+                      f'\n\t- {self.severity[3]}:\t+16% total games' \
+                      f'\n\t- {self.severity[4]}:\tShared champ'
+        self.champions_for_role = ChampionsForRole(self.api_info, self.player_ranks.colour_columns[0])
+        await self.post_to_discord()
+
+    async def get_ban_recommendation_table(self, know_position: bool = False):
         """
         Parse the player list to generate the ban recommendation table
+
+        :param know_position: If the positions of the players are known use the champions_for_role table
         """
         self.legend = f'--------------------------------------------------------------------\n' \
                       f'Ban List Legend:' \
@@ -118,6 +136,8 @@ class ClashBot:
         combined_tables = [[self.mastery_shared.columns, self.mastery_shared.colour_columns],
                            [self.recent_champion.columns, self.recent_champion.colour_columns],
                            [self.clash_ranked.columns, self.clash_ranked.colour_columns]]
+        if know_position:
+            combined_tables.append([self.champions_for_role.columns, self.champions_for_role.colour_columns])
         CalculateBanRecommendations(combined_tables)
         await self.post_to_discord()
 
@@ -144,6 +164,7 @@ class ClashBot:
         await self.post_no_match_history()
         await self.post_no_ranked_info()
         await self.post_no_ranked_clash()
+        await self.post_no_clash_team()
 
     async def post_player_not_found(self):
         """
@@ -185,6 +206,16 @@ class ClashBot:
         if failure_message != 'The given player(s) have no match history:\n':
             await self.message.channel.send(failure_message)
 
+    async def post_no_clash_team(self):
+        """
+        Post if a given player was not in a clash team
+        """
+        failure_message = 'The given player(s) are not in a clash team:\n'
+        for player_name in self.api_info.errors['no_clash_team']:
+            failure_message += f'\t-\t{player_name}\n'
+        if failure_message != 'The given player(s) are not in a clash team:\n':
+            await self.message.channel.send(failure_message)
+
     async def get_all_tables(self, display_positions: bool = False):
         """
         Get all of the different types of tables for each player given
@@ -198,7 +229,11 @@ class ClashBot:
         await self.get_mastery_shared_table()
         await self.get_recent_champion_table()
         await self.get_clash_ranked_table()
-        await self.get_ban_recommendation_table()
+        if display_positions and self.api_info.errors['no_clash_team'] == []:
+            await self.get_champions_for_locked_in_role()
+            await self.get_ban_recommendation_table(know_position=True)
+        else:
+            await self.get_ban_recommendation_table()
         await self.post_error_messages()
 
     async def parse_discord_message(self):

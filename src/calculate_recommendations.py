@@ -63,19 +63,23 @@ class CalculateBanRecommendations:
         """
         Colour the top 10 champs based on how much score they have
         """
-        self.total_ban_points = sum([float(total) for total in self.points_column])
+        self.total_ban_points = sum([float(total) for total in self.points_column if total != ''])
         colours = []
         for points in self.points_column:
-            points = float(points)
-            if points > self.total_ban_points * 0.09:
-                colours.append('red')
-            elif points > self.total_ban_points * 0.07:
-                colours.append('orange')
-            elif points > self.total_ban_points * 0.05:
-                colours.append('yellow')
-            else:
+            try:
+                points = float(points)
+            except ValueError:
                 colours.append('')
-        self.colour_columns.append(colours)
+            else:
+                if points > self.total_ban_points * 0.09:
+                    colours.append('red')
+                elif points > self.total_ban_points * 0.07:
+                    colours.append('orange')
+                elif points > self.total_ban_points * 0.05:
+                    colours.append('yellow')
+                else:
+                    colours.append('')
+            # self.colour_columns.append(colours)
         self.colour_columns.append(colours)
 
     def get_top_champs(self):
@@ -83,10 +87,15 @@ class CalculateBanRecommendations:
         Get the 15 highest scoring champs
         """
         for _ in range(15):
-            champ_name = max(self.ban_dict.items(), key=operator.itemgetter(1))[0]
-            points = str(self.ban_dict.pop(champ_name))
-            self.champion_column.append(champ_name)
-            self.points_column.append(points)
+            try:
+                champ_name = max(self.ban_dict.items(), key=operator.itemgetter(1))[0]
+            except ValueError:
+                self.champion_column.append('')
+                self.points_column.append('')
+            else:
+                points = str(self.ban_dict.pop(champ_name))
+                self.champion_column.append(champ_name)
+                self.points_column.append(points)
         self.columns.append(self.champion_column)
         self.columns.append(self.points_column)
 
@@ -95,8 +104,12 @@ class CalculateBanRecommendations:
         Process every table given in the combined tables list
         """
         for table_type in self.combined_tables:
-            self.current_table = table_type[0]
-            self.current_colours = table_type[1]
+            if isinstance(table_type[0][0], list):
+                self.current_table = table_type[0]
+                self.current_colours = table_type[1]
+            else:
+                self.current_table = [table_type[0]]
+                self.current_colours = [table_type[1]]
             self.process_single_table()
 
     def process_single_table(self):
@@ -169,7 +182,7 @@ class CalculateBanRecommendations:
         Calculate points based on the colour modification
         """
         if self.current_colour == 'red' or self.current_colour == 'yellow':
-            self.points = self.points * 1.5
+            self.points = self.points * 1.1
 
     def get_points_by_table_value(self):
         """
@@ -182,5 +195,5 @@ if __name__ == '__main__':
     from api_queries import APIQueries
     shelf = shelve.open('../extra_files/my_api')
     shelf = dict(shelf)['combined_tables']
-    calc = CalculateBanRecommendations(shelf)
+    calc = CalculateBanRecommendations([shelf])
     print()

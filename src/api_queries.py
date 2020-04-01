@@ -87,9 +87,10 @@ class APIQueries:
         for player in self.player_information:
             self.player_list = [player]
         self.get_clash_team_id()
-        self.process_each_clash_member()
-        self.get_locked_in_position()
-        self.change_order_by_position()
+        if not self.errors['no_clash_team']:
+            self.process_each_clash_member()
+            self.get_locked_in_position()
+            self.change_order_by_position()
 
     def change_order_by_position(self):
         """
@@ -200,7 +201,10 @@ class APIQueries:
         except HTTPError:
             self.errors['no_clash_team'].append(self.player_list[0])
         else:
-            self.get_clash_team_players(clash_team_info[0]['teamId'])
+            if clash_team_info:
+                self.get_clash_team_players(clash_team_info[0]['teamId'])
+            else:
+                self.errors['no_clash_team'].append(self.player_list[0])
 
     def get_clash_team_players(self, clash_team_id: str):
         """

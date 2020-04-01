@@ -63,7 +63,7 @@ class PlayerLockedInPosition:
 
         # If the player has not been placed in ranked
         except KeyError:
-            self.position_column.append('FILL')
+            self.position_column.append('NONE')
 
     def set_colour_columns(self):
         """
