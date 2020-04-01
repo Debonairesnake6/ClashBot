@@ -222,19 +222,20 @@ class ClashBot:
 
         :param display_positions: Display the locked in positions table if using the clash API
         """
-        await self.get_player_ranks_table()
-        if display_positions:
-            await self.get_player_locked_in_position()
-        await self.get_role_rate_table()
-        await self.get_mastery_shared_table()
-        await self.get_recent_champion_table()
-        await self.get_clash_ranked_table()
-        if display_positions and self.api_info.errors['no_clash_team'] == []:
-            await self.get_champions_for_locked_in_role()
-            await self.get_ban_recommendation_table(know_position=True)
-        else:
-            await self.get_ban_recommendation_table()
-        await self.post_error_messages()
+        if self.api_info.errors['no_clash_team'] is []:
+            await self.get_player_ranks_table()
+            if display_positions:
+                await self.get_player_locked_in_position()
+            await self.get_role_rate_table()
+            await self.get_mastery_shared_table()
+            await self.get_recent_champion_table()
+            await self.get_clash_ranked_table()
+            if display_positions:
+                await self.get_champions_for_locked_in_role()
+                await self.get_ban_recommendation_table(know_position=True)
+            else:
+                await self.get_ban_recommendation_table()
+            await self.post_error_messages()
 
     async def parse_discord_message(self):
         """
