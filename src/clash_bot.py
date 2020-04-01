@@ -235,7 +235,7 @@ class ClashBot:
                 await self.get_ban_recommendation_table(know_position=True)
             else:
                 await self.get_ban_recommendation_table()
-            await self.post_error_messages()
+        await self.post_error_messages()
 
     async def parse_discord_message(self):
         """
