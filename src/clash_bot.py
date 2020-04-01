@@ -224,7 +224,7 @@ class ClashBot:
 
         :param display_positions: Display the locked in positions table if using the clash API
         """
-        if self.api_info.errors['no_clash_team'] is []:
+        if len(self.api_info.errors['no_clash_team']) == 0:
             await self.get_player_ranks_table()
             if display_positions:
                 await self.get_player_locked_in_position()
