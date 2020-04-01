@@ -138,7 +138,9 @@ class ClashBot:
                            [self.clash_ranked.columns, self.clash_ranked.colour_columns]]
         if know_position:
             combined_tables.append([self.champions_for_role.columns, self.champions_for_role.colour_columns])
-        CalculateBanRecommendations(combined_tables)
+            CalculateBanRecommendations(combined_tables, locked_in_role=True)
+        else:
+            CalculateBanRecommendations(combined_tables, locked_in_role=False)
         await self.post_to_discord()
 
     async def post_to_discord(self):
@@ -242,7 +244,7 @@ class ClashBot:
         Parse the discord message to grab each summoner name given
         """
         self.player_list = []
-        # Get the first 5 player names give
+        # Get the first 5 player names given
         for player_name_cnt, player_name in enumerate(self.message.content[7:].split(',')):
             if player_name_cnt >= 5:
                 continue

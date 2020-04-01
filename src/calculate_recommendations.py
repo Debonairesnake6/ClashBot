@@ -13,13 +13,15 @@ class CalculateBanRecommendations:
     Calculate object for getting the total points of each champion
     """
 
-    def __init__(self, combined_tables: list):
+    def __init__(self, combined_tables: list, locked_in_role: bool = False):
         """
         Calculate object for getting the total points of each champion
 
         :param combined_tables: Array of each table for the other queries along with their colour codes
+        :param locked_in_role: If the locked in role was known and had the table created
         """
         self.combined_tables = combined_tables
+        self.locked_in_role = locked_in_role
         self.titles = ['Champion', 'Points']
         self.current_table = None
         self.current_colours = None
@@ -79,7 +81,6 @@ class CalculateBanRecommendations:
                     colours.append('yellow')
                 else:
                     colours.append('')
-            # self.colour_columns.append(colours)
         self.colour_columns.append(colours)
 
     def get_top_champs(self):
@@ -188,7 +189,11 @@ class CalculateBanRecommendations:
         """
         Calculate points based on the value in the table
         """
-        self.points = 1000 * (int(self.current_table_value) / self.column_total_value)
+        if self.locked_in_role and self.current_table == self.combined_tables[-1][0]:
+            self.points = 3000
+        else:
+            self.points = 1000
+        self.points = self.points * (int(self.current_table_value) / self.column_total_value)
 
 
 if __name__ == '__main__':
