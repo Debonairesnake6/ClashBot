@@ -119,9 +119,11 @@ class RoleRate:
                 self.colour_current_column.append('')
         self.colour_columns.append(self.colour_current_column)
 
-    def calculate_all_roles(self):
+    def calculate_all_roles(self, player_name: str = None):
         """
         Calculate the roles for the current player
+
+        @param player_name: Name of the player who's match history is being processed
         """
         self.player_roles = {
             'TOP': 0,
@@ -130,6 +132,8 @@ class RoleRate:
             'BOTTOM': 0,
             'UTILITY': 0
         }
+        if player_name:
+            self.player_name = player_name
 
         # Get the role for each game
         for match in self.match_history:
@@ -165,9 +169,18 @@ class RoleRate:
         :param position: Position the player locked in
         """
         if 'position' in self.api_results.player_information[self.player_name] \
-                and position == self.api_results.player_information[self.player_name]['position']:
-            for champion_name in self.api_results.champion_info:
-                if str(self.current_match['champion']) == self.api_results.champion_info[champion_name]['key']:
-                    self.api_results.player_information[self.player_name]['position_champions'][champion_name] = \
-                        self.api_results.player_information[self.player_name]['position_champions'].get(champion_name,
-                                                                                                        0) + 1
+                and position == self.api_results.player_information[self.player_name]['position']\
+                and 'real_position' not in self.api_results.player_information[self.player_name]:
+            self.add_champ_to_current_position()
+        elif 'real_position' in self.api_results.player_information[self.player_name] \
+                and position == self.api_results.player_information[self.player_name]['real_position']:
+            self.add_champ_to_current_position()
+
+    def add_champ_to_current_position(self):
+        """
+        Add the champion to the list if played in the same role the player locked in
+        """
+        for champion_name in self.api_results.champion_info:
+            if str(self.current_match['champion']) == self.api_results.champion_info[champion_name]['key']:
+                self.api_results.player_information[self.player_name]['position_champions'][champion_name] = \
+                    self.api_results.player_information[self.player_name]['position_champions'].get(champion_name, 0) + 1

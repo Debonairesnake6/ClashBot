@@ -5,6 +5,7 @@ This file will run all of the API queries for each access during the processing 
 import json
 import os
 import urllib.request
+import operator
 
 from dotenv import load_dotenv
 from urllib.error import HTTPError
@@ -87,7 +88,7 @@ class APIQueries:
         for player in self.player_information:
             self.player_list = [player]
         self.get_clash_team_id()
-        if not self.errors['no_clash_team']:
+        if len(self.errors['no_clash_team']) == 0:
             self.process_each_clash_member()
             self.get_locked_in_position()
             self.change_order_by_position()
@@ -129,17 +130,17 @@ class APIQueries:
                     new_order.insert(cnt, [player for player in self.player_information if player not in new_order][0])
                     return new_order
         else:
-            role_calc = RoleRate(just_using_functions=True)
+            role_calc = RoleRate(self, just_using_functions=True)
             missing_players = {}
             missing_roles = [role for role in ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'] if role not in roles_found]
             for player in [player for player in self.player_information if player not in new_order]:
-                role_calc.match_history = self.player_information[player]['ranked_match_history']
-                role_calc.calculate_all_roles()
-                missing_players[player] = {'TOP': role_calc.player_roles['top'],
-                                           'JUNGLE': role_calc.player_roles['jng'],
-                                           'MIDDLE': role_calc.player_roles['mid'],
-                                           'BOTTOM': role_calc.player_roles['bot'],
-                                           'UTILITY': role_calc.player_roles['sup']}
+                role_calc.match_history = self.player_information[player]['all_match_history']
+                role_calc.calculate_all_roles(player)
+                missing_players[player] = {'TOP': role_calc.player_roles['TOP'],
+                                           'JUNGLE': role_calc.player_roles['JUNGLE'],
+                                           'MIDDLE': role_calc.player_roles['MIDDLE'],
+                                           'BOTTOM': role_calc.player_roles['BOTTOM'],
+                                           'UTILITY': role_calc.player_roles['UTILITY']}
             for role in missing_roles:
                 role_score = {}
                 for player in missing_players:
@@ -147,8 +148,9 @@ class APIQueries:
                                                                               position in missing_players[player] if
                                                                               position in missing_roles and position
                                                                               != role])
-                new_order.insert(['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'].index(role), max(role_score))
-                missing_players.pop(max(role_score))
+                new_order.insert(['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'].index(role),
+                                 max(role_score.items(), key=operator.itemgetter(1))[0])
+                missing_players.pop(max(role_score.items(), key=operator.itemgetter(1))[0])
             return new_order
 
     def switch_to_new_order(self, new_order: list):
@@ -157,10 +159,18 @@ class APIQueries:
 
         :param new_order: Player names in order of position
         """
+        position_matrix = {
+            0: 'TOP',
+            1: 'JUNGLE',
+            2: 'MIDDLE',
+            3: 'BOTTOM',
+            4: 'UTILITY'
+        }
         player_information_copy = self.player_information.copy()
         self.player_information = {}
-        for player in new_order:
+        for position_count, player in enumerate(new_order):
             self.player_information[player] = player_information_copy[player]
+            self.player_information[player]['real_position'] = position_matrix[position_count]
 
     def fix_titles(self):
         """
