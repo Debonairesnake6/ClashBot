@@ -122,9 +122,9 @@ class APIQueries:
         :param new_order: Player names in order of position
         :param roles_found: Roles successfully grabbed
         """
-        if len(roles_found) == 5:
+        if len(roles_found) == len(self.player_information):
             return new_order
-        elif len(roles_found) == 4:
+        elif len(roles_found) == len(self.player_information) - 1:
             for cnt, position in enumerate(['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY']):
                 if position not in roles_found:
                     new_order.insert(cnt, [player for player in self.player_information if player not in new_order][0])
@@ -142,15 +142,16 @@ class APIQueries:
                                            'BOTTOM': role_calc.player_roles['BOTTOM'],
                                            'UTILITY': role_calc.player_roles['UTILITY']}
             for role in missing_roles:
-                role_score = {}
-                for player in missing_players:
-                    role_score[player] = missing_players[player][role] - sum([missing_players[player][position] for
-                                                                              position in missing_players[player] if
-                                                                              position in missing_roles and position
-                                                                              != role])
-                new_order.insert(['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'].index(role),
-                                 max(role_score.items(), key=operator.itemgetter(1))[0])
-                missing_players.pop(max(role_score.items(), key=operator.itemgetter(1))[0])
+                if missing_players != {}:
+                    role_score = {}
+                    for player in missing_players:
+                        role_score[player] = missing_players[player][role] - sum([missing_players[player][position] for
+                                                                                  position in missing_players[player] if
+                                                                                  position in missing_roles and position
+                                                                                  != role])
+                    new_order.insert(['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'].index(role),
+                                     max(role_score.items(), key=operator.itemgetter(1))[0])
+                    missing_players.pop(max(role_score.items(), key=operator.itemgetter(1))[0])
             return new_order
 
     def switch_to_new_order(self, new_order: list):
