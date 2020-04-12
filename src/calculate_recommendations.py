@@ -136,7 +136,9 @@ class CalculateBanRecommendations:
 
         :param column: Current column to grab to total value from
         """
-        if not column[0].replace('.', '').strip().isdigit():
+        if column[0] == '':
+            self.calculate_column_values(column)
+        elif not column[0].replace('.', '').strip().isdigit():
             column = self.format_mastery_values(column)
             self.calculate_column_total_value(column)
         else:
@@ -152,7 +154,9 @@ class CalculateBanRecommendations:
         """
         fixed_column = []
         for row in column:
-            if row.split(' ')[1] == 'K':
+            if len(row.split()) < 2:
+                fixed_column.append(row)
+            elif row.split(' ')[1] == 'K':
                 fixed_column.append(str(int(float(row.split()[0]) * 1000)))
             elif row.split(' ')[1] == 'M':
                 fixed_column.append(str(int(float(row.split()[0]) * 1000000)))
@@ -199,6 +203,6 @@ class CalculateBanRecommendations:
 if __name__ == '__main__':
     from api_queries import APIQueries
     shelf = shelve.open('../extra_files/my_api')
-    shelf = dict(shelf)['combined_tables']
-    calc = CalculateBanRecommendations([shelf])
+    shelf = dict(shelf)['calculate_recommendations']
+    calc = CalculateBanRecommendations(shelf['combined_tables'], shelf['locked_in_role'])
     print()
