@@ -221,8 +221,9 @@ class TableToImage:
 
             # If the word appears multiple times
             else:
-                x_position = [x_pos for x_pos in range(len(row_string)) if
-                              row_string.startswith(self.word, x_pos)][self.processed.count(self.word)]
+                x_position = [x_pos for x_pos in range(len(row_string)) if row_string.startswith(self.word, x_pos)
+                              and row_string[x_pos + len(self.word)] in [' ', '|'] and row_string[x_pos - 1] in
+                              [' ', '|']][self.processed.count(self.word)]
 
             # Fill with black first
             for x in range(5):
@@ -240,19 +241,9 @@ class TableToImage:
 
 if __name__ == '__main__':
 
-    # # CreateImage
-    # data = [['Zilean', '208.7 K', 'Zilean', '301.1 K', 'Zilean', '48.2 K', 'Nami', '601.4 K', 'Talon', '120.6 K'], ['Maokai', '208.2 K', 'LeeSin', '266.2 K', 'Braum', '38.2 K', 'Karma', '332.2 K', 'Orianna', '106.9 K'], ['Brand', '148.0 K', 'Thresh', '240.5 K', 'Malphite', '37.9 K', 'Lulu', '269.2 K', 'Zyra', '50.3 K'], ['Janna', '109.2 K', 'Tristana', '109.9 K', 'LeeSin', '36.9 K', 'Brand', '211.9 K', 'Gangplank', '47.2 K'], ['Ezreal', '95.9 K', 'Zed', '108.3 K', 'Nautilus', '33.8 K', 'Ahri', '139.8 K', 'Kayle', '46.2 K'], ['KogMaw', '91.5 K', 'Graves', '101.3 K', 'Brand', '30.6 K', 'Sona', '87.9 K', 'Fiora', '37.8 K'], ['Gangplank', '81.1 K', 'Lucian', '87.7 K', 'TahmKench', '30.1 K', 'Yuumi', '67.1 K', 'Morgana', '29.9 K'], ['Karthus', '77.9 K', 'Jhin', '78.8 K', 'Graves', '29.9 K', 'Rakan', '43.4 K', 'Illaoi', '27.5 K'], ['DrMundo', '69.9 K', 'Yasuo', '75.0 K', 'Viktor', '24.3 K', 'Sivir', '39.0 K', 'Lulu', '25.6 K'], ['Kaisa', '65.0 K', 'Caitlyn', '73.4 K', 'Orianna', '20.3 K', 'Soraka', '32.8 K', 'Lux', '23.7 K']]
-    # colour = [['orange', 'orange', 'red', 'red', 'yellow', 'yellow', 'orange', 'orange', 'orange', 'orange'], ['orange', 'orange', 'red', 'red', '', '', 'orange', 'orange', 'red', 'red'], ['yellow', 'yellow', 'red', 'red', '', '', 'yellow', 'yellow', '', ''], ['', '', '', '', 'yellow', 'yellow', 'yellow', 'yellow', 'yellow', 'yellow'], ['', '', '', '', '', '', '', '', '', ''], ['', '', 'yellow', 'yellow', 'yellow', 'yellow', '', '', '', ''], ['yellow', 'yellow', '', '', '', '', '', '', '', ''], ['', '', '', '', 'yellow', 'yellow', '', '', '', ''], ['', '', '', '', '', '', '', '', 'yellow', 'yellow'], ['', '', '', '', 'yellow', 'yellow', '', '', '', '']]
-    # titles = ['Debonairesnake6', '#1', 'In Vänity', '#2', 'Wosko', '#3', 'Smol Squish', '#4', 'Ori Bot', '#5']
-    # tmp = CreateImage(titles, data, 'test.png', colour=colour, convert_columns=False)
-    # tmp.table_to_image.img.show()
-    # print()
-
     import shelve
-    create_image_copy = dict(shelve.open('../extra_files/my_api')['title_colours'])
-    titles = ['Debonairesnake6', '#1', 'In Vänity', '#2', 'Wosko', '#3', 'Smol Squish', '#4', 'Ori Bot', '#5']
-    title_colours = ['iron', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'master', 'grandmaster', 'challenger', 'iron']
-    new = TableToImage(create_image_copy['table'], create_image_copy['table_colour'],
-                       create_image_copy['original_rows'], titles, title_colours)
-    new.img.save('test.png')
+    tmp = dict(shelve.open('../extra_files/my_api')['text_to_image'])
+    new = CreateImage(tmp['titles'], tmp['rows'], tmp['file_name'], tmp['colour'], tmp['convert_columns'],
+                      tmp['title_colours'])
+    new.save_image()
     print()

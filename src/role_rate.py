@@ -138,6 +138,8 @@ class RoleRate:
         # Get the role for each game
         for match in self.match_history:
             self.current_match = match
+            if 'position_champions' not in self.api_results.player_information[self.player_name]:
+                self.api_results.player_information[self.player_name]['position_champions'] = {}
             self.determine_role_played()
 
         # Add the final list to the columns set

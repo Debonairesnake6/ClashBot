@@ -104,7 +104,10 @@ class ClashBot:
         Parse the player list to get the lock in position table
         """
         self.legend = f'--------------------------------------------------------------------\n' \
-                      f'Player Position Table:'
+                      f'Player Position Table:' \
+                      f'\n\t- These are the positions each player has locked in with.' \
+                      f'\n\t- If multiple players chose the same role it will try to calculate their ' \
+                      f'actual role and order them accordingly.'
         PlayerLockedInPosition(self.api_info)
         await self.post_to_discord()
 

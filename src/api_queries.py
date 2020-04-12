@@ -33,9 +33,11 @@ class APIQueries:
         self.clash_team_members = None
         self.clash_api = clash_api
         self.titles = []
+        self.saved_positions = {}
         self.player_list = player_list
         self.base_url = 'https://na1.api.riotgames.com'
         self.api_key = f'?api_key={os.getenv("RIOT_API")}'
+        self.role_list = ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY']
         self.errors = {
             'player_not_found': [],
             'no_ranked_clash': [],
@@ -92,6 +94,24 @@ class APIQueries:
             self.process_each_clash_member()
             self.get_locked_in_position()
             self.change_order_by_position()
+            self.verify_single_player_per_role()
+
+    def verify_single_player_per_role(self):
+        """
+        Verify only a single player is locked in per role and adjust if need be
+        """
+        for role in self.role_list:
+            locked_in = [player for player in self.player_information
+                         if self.player_information[player]['position'] == role]
+            if len(locked_in) > 1:
+                for player in locked_in:
+                    self.saved_positions[player] = role
+        if self.saved_positions != {}:
+            for player in self.saved_positions:
+                self.player_information[player]['position'] = 'FILL'
+            self.change_order_by_position()
+            for player in self.saved_positions:
+                self.player_information[player]['position'] = self.saved_positions[player]
 
     def change_order_by_position(self):
         """
@@ -108,7 +128,7 @@ class APIQueries:
         """
         new_order = []
         roles_found = []
-        for position in ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY']:
+        for position in self.role_list:
             for player in self.player_information:
                 if self.player_information[player]['position'] == position:
                     new_order.append(player)
@@ -125,14 +145,14 @@ class APIQueries:
         if len(roles_found) == len(self.player_information):
             return new_order
         elif len(roles_found) == len(self.player_information) - 1:
-            for cnt, position in enumerate(['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY']):
+            for cnt, position in enumerate(self.role_list):
                 if position not in roles_found:
                     new_order.insert(cnt, [player for player in self.player_information if player not in new_order][0])
                     return new_order
         else:
             role_calc = RoleRate(self, just_using_functions=True)
             missing_players = {}
-            missing_roles = [role for role in ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'] if role not in roles_found]
+            missing_roles = [role for role in self.role_list if role not in roles_found]
             for player in [player for player in self.player_information if player not in new_order]:
                 role_calc.match_history = self.player_information[player]['all_match_history']
                 role_calc.calculate_all_roles(player)
@@ -149,8 +169,7 @@ class APIQueries:
                                                                                   position in missing_players[player] if
                                                                                   position in missing_roles and position
                                                                                   != role])
-                    new_order.insert(['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'].index(role),
-                                     max(role_score.items(), key=operator.itemgetter(1))[0])
+                    new_order.insert(self.role_list.index(role), max(role_score.items(), key=operator.itemgetter(1))[0])
                     missing_players.pop(max(role_score.items(), key=operator.itemgetter(1))[0])
             return new_order
 
