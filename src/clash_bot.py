@@ -309,33 +309,36 @@ class ClashBot:
 
             :param message: Context of the message
             """
-            if message.content == '!clash help':
-                await message.channel.send('Clash Bot commands:\n'
-                                           '```'
-                                           '!clash\n'
-                                           '-\tBasic command to pull all of the tables from the default list of:\n'
-                                           '-\tDebonairesnake6, In Vänity, Wosko, Smol Squish, Ori Bot.\n\n'
-                                           ''
-                                           '!clash_team [player1]\n'
-                                           '-\tInsert a single player name on the enemy team.\n'
-                                           '-\tThis will grab all of the players on their clash team.\n'
-                                           '-\tIt will also order the summoners by their role (Top --> Support).\n'
-                                           '-\tIf players are locked in as fill it will attempt to display their '
-                                           'correct position.\n\n'
-                                           ''
-                                           '!clash [player1], [player2], [player3], [player4], [player5]\n'
-                                           '-\tInsert each summoner name separated by a comma.\n'
-                                           '-\tThis will pull every table for all of the given summoners in NA.\n'
-                                           '-\tYou can use up to 5 summoner names.\n\n'
-                                           '```')
-            elif message.content[:7] == '!clash ':
-                self.message = message
-                await self.process_discord_message()
-            elif message.content[:11] == '!clash_team':
-                self.message = message
-                await self.process_discord_message_single_player()
-            elif message.content[:6] == '!clash':
-                await message.channel.send('Unknown command. Use "!clash help" for the available options.')
+            try:
+                if message.content == '!clash help':
+                    await message.channel.send('Clash Bot commands:\n'
+                                               '```'
+                                               '!clash\n'
+                                               '-\tBasic command to pull all of the tables from the default list of:\n'
+                                               '-\tDebonairesnake6, In Vänity, Wosko, Smol Squish, Ori Bot.\n\n'
+                                               ''
+                                               '!clash_team [player1]\n'
+                                               '-\tInsert a single player name on the enemy team.\n'
+                                               '-\tThis will grab all of the players on their clash team.\n'
+                                               '-\tIt will also order the summoners by their role (Top --> Support).\n'
+                                               '-\tIf players are locked in as fill it will attempt to display their '
+                                               'correct position.\n\n'
+                                               ''
+                                               '!clash [player1], [player2], [player3], [player4], [player5]\n'
+                                               '-\tInsert each summoner name separated by a comma.\n'
+                                               '-\tThis will pull every table for all of the given summoners in NA.\n'
+                                               '-\tYou can use up to 5 summoner names.\n\n'
+                                               '```')
+                elif message.content[:7] == '!clash ':
+                    self.message = message
+                    await self.process_discord_message()
+                elif message.content[:11] == '!clash_team':
+                    self.message = message
+                    await self.process_discord_message_single_player()
+                elif message.content[:6] == '!clash':
+                    await message.channel.send('Unknown command. Use "!clash help" for the available options.')
+            except Exception as exception:
+                await message.channel.send(f'Failed with error: {exception}')
 
         @self.bot.event
         async def on_ready():
