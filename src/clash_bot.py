@@ -3,6 +3,7 @@ import urllib
 import time
 import sys
 import api_queries
+import json
 
 from discord import File
 from discord.ext import commands
@@ -36,6 +37,9 @@ class ClashBot:
         self.clash_ranked = None
         self.player_ranks = None
         self.champions_for_role = None
+        self.reaction_payload = None
+        self.message_history = {}
+        self.message_list = []
 
     async def get_role_rate_table(self):
         """
@@ -154,12 +158,14 @@ class ClashBot:
         for _, _, filenames in os.walk('../extra_files'):
             for file in filenames:
                 if file[-4:] == '.png':
-                    await self.message.channel.send(self.legend, file=File(f'../extra_files/{file}', filename=file))
+                    self.message_list.append(await self.message.channel.send(self.legend,
+                                                                             file=File(f'../extra_files/{file}',
+                                                                                       filename=file)))
                     os.remove(f'../extra_files/{file}')
                     message_sent = True
 
         if not message_sent:
-            await self.message.channel.send(self.legend)
+            self.message_list.append(await self.message.channel.send(self.legend))
 
     async def post_error_messages(self):
         """
@@ -179,7 +185,7 @@ class ClashBot:
         for player_name in self.api_info.errors['player_not_found']:
             failure_message += f'\t-\t{player_name}\n'
         if failure_message != 'The given player(s) were not found:\n':
-            await self.message.channel.send(failure_message)
+            self.message_list.append(await self.message.channel.send(failure_message))
 
     async def post_no_ranked_info(self):
         """
@@ -189,7 +195,7 @@ class ClashBot:
         for player_name in self.api_info.errors['no_ranked_info']:
             failure_message += f'\t-\t{player_name}\n'
         if failure_message != 'The given player(s) are not placed in any rank queue:\n':
-            await self.message.channel.send(failure_message)
+            self.message_list.append(await self.message.channel.send(failure_message))
 
     async def post_no_ranked_clash(self):
         """
@@ -199,7 +205,7 @@ class ClashBot:
         for player_name in self.api_info.errors['no_ranked_clash']:
             failure_message += f'\t-\t{player_name}\n'
         if failure_message != 'The given player(s) have never played ranked or clash:\n':
-            await self.message.channel.send(failure_message)
+            self.message_list.append(await self.message.channel.send(failure_message))
 
     async def post_no_match_history(self):
         """
@@ -209,7 +215,7 @@ class ClashBot:
         for player_name in self.api_info.errors['no_match_history']:
             failure_message += f'\t-\t{player_name}\n'
         if failure_message != 'The given player(s) have no match history:\n':
-            await self.message.channel.send(failure_message)
+            self.message_list.append(await self.message.channel.send(failure_message))
 
     async def post_no_clash_team(self):
         """
@@ -219,7 +225,7 @@ class ClashBot:
         for player_name in self.api_info.errors['no_clash_team']:
             failure_message += f'\t-\t{player_name}\n'
         if failure_message != 'The given player(s) are not in a clash team:\n':
-            await self.message.channel.send(failure_message)
+            self.message_list.append(await self.message.channel.send(failure_message))
 
     async def get_all_tables(self, display_positions: bool = False):
         """
@@ -264,8 +270,8 @@ class ClashBot:
 
         # Notify the user tables are being created
         player_message = '\n\t-\t'.join(self.player_list)
-        await self.message.channel.send(f'Attempting to create tables for:\n'
-                                        f'\t-\t{player_message}')
+        self.message_list.append(await self.message.channel.send(f'Attempting to create tables for:\n'
+                                                                 f'\t-\t{player_message}'))
 
     def get_api_information_for_each_player(self, clash_api: bool = False):
         """
@@ -279,6 +285,7 @@ class ClashBot:
         """
         Process the given discord message and run the appropriate functions
         """
+        self.message_list = []
         await self.parse_discord_message()
         self.get_api_information_for_each_player()
         await self.get_all_tables()
@@ -288,22 +295,66 @@ class ClashBot:
         Parse the discord message to extract the single player name given
         """
         self.player_list = [' '.join(self.message.content.strip().split()[1:])]
-        await self.message.channel.send(f'Attempting to create tables for {self.player_list[0]}\'s clash team.')
+        self.message_list.append(await self.message.channel.send(f'Attempting to create tables for '
+                                                                 f'{self.player_list[0]}\'s clash team.'))
 
     async def process_discord_message_single_player(self):
         """
         Process the given discord message for the single player given
         """
+        self.message_list = []
         await self.parse_discord_message_single_player()
         self.get_api_information_for_each_player(clash_api=True)
         await self.get_all_tables(display_positions=True)
+
+    async def process_reaction_event(self):
+        """
+        Delete the message to call the bot and all of the bot's response messages
+        """
+        my_bot_ids = [656270921216294949]
+        if self.reaction_payload.emoji.name == '❌' and self.reaction_payload.user_id not in my_bot_ids:
+            if str(self.reaction_payload.message_id) in self.message_history:
+                for message in self.message_history[str(self.reaction_payload.message_id)]:
+                    channel = await self.bot.fetch_channel(message['channel_id'])
+                    original_message = await channel.fetch_message(message['message_id'])
+                    await original_message.delete()
+                self.message_history.pop(str(self.reaction_payload.message_id))
+        self.save_message_history()
+
+    def save_message_history(self):
+        """
+        Save the message history
+        """
+        with open('../extra_files/message_history.json', 'w', encoding='utf-8') as message_history_file:
+            json.dump(self.message_history, message_history_file, indent=4)
+
+    def load_message_history(self):
+        """
+        Load the message history for the bot
+        """
+
+        # If the message_history.json file does not exist, create it
+        if not os.path.isfile('../extra_files/message_history.json'):
+            with open('../extra_files/message_history.json', 'w', encoding='utf-8') as message_history_file:
+                message_history_file.write('{\n}')
+
+        # If the file does exist, read it and save it's values
+        else:
+            try:
+                with open('../extra_files/message_history.json', 'r', encoding='utf-8') as message_history_file:
+                    self.message_history = json.load(message_history_file)
+
+            # If the file is empty, create it an as empty dictionary
+            except json.decoder.JSONDecodeError:
+                with open('../extra_files/message_history.json', 'w', encoding='utf-8') as message_history_file:
+                    message_history_file.write('{\n}')
 
     def start_bot(self):
         """
         Start the bot
         """
         @self.bot.event
-        async def on_message(message):
+        async def on_message(message: object):
             """
             Receive and parse any message
 
@@ -336,9 +387,25 @@ class ClashBot:
                     self.message = message
                     await self.process_discord_message_single_player()
                 elif message.content[:6] == '!clash':
-                    await message.channel.send('Unknown command. Use "!clash help" for the available options.')
+                    self.message_list.append(await message.channel.send('Unknown command. Use "!clash help" for the '
+                                                                        'available options.'))
+
+                # Stop processing if not a clash command
+                else:
+                    return
+
             except Exception as exception:
                 await message.channel.send(f'Failed with error: {exception}')
+
+            # Add the messages to the message history dictionary
+            else:
+                if len(self.message_list) > 0:
+                    self.message_list.insert(0, message)
+                    self.message_history[f'{self.message_list[-1].id}'] = [{'channel_id': message.channel.id,
+                                                                            'message_id': message.id} for message
+                                                                           in self.message_list]
+                    await self.message_list[-1].add_reaction('❌')
+                    self.save_message_history()
 
         @self.bot.event
         async def on_ready():
@@ -348,6 +415,17 @@ class ClashBot:
             if os.name == 'nt':
                 print('Ready')
             await self.bot.change_presence(activity=Activity(type=ActivityType.playing, name='!clash help'))
+            self.load_message_history()
+
+        @self.bot.event
+        async def on_raw_reaction_add(reaction_payload: object):
+            """
+            Checks if a reaction is added to the message
+
+            :param reaction_payload: Payload information about the reaction
+            """
+            self.reaction_payload = reaction_payload
+            await self.process_reaction_event()
 
         # Run the bot
         self.bot.run(os.getenv('DISCORD_TOKEN'))
