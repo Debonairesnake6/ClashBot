@@ -4,6 +4,7 @@ import time
 import sys
 import api_queries
 import json
+import shelve
 
 from discord import File
 from discord.ext import commands
@@ -281,6 +282,18 @@ class ClashBot:
         """
         self.api_info = api_queries.APIQueries(self.player_list, clash_api)
 
+        # Save the results to a local shelf in case they need to be used later
+        file_path = '../extra_files/save_number.txt'
+        shelf_path = '../extra_files/my_api'
+        if os.path.isfile(file_path):
+            with open(file_path, 'r') as my_number:
+                save_number = my_number.read().strip()
+        else:
+            save_number = '0'
+
+        with shelve.open(shelf_path) as shelf:
+            shelf[save_number] = self.api_info
+
     async def process_discord_message(self):
         """
         Process the given discord message and run the appropriate functions
@@ -349,6 +362,32 @@ class ClashBot:
                 with open('../extra_files/message_history.json', 'w', encoding='utf-8') as message_history_file:
                     message_history_file.write('{\n}')
 
+    async def save_last_request(self):
+        """
+        Increase the save number to keep the last request so it may be used later for troubleshooting
+        """
+        file_path = '../extra_files/save_number.txt'
+        if os.path.isfile(file_path):
+            with open(file_path, 'r') as my_number:
+                save_number = int(my_number.read().strip()) + 1
+
+            with open(file_path, 'w') as my_number:
+                my_number.write(str(save_number))
+        else:
+            save_number = '1'
+            with open(file_path, 'w') as my_number:
+                my_number.write(save_number)
+        await self.message.channel.send(f'Saved last query as number: {save_number}')
+
+    async def clear_saved_queries(self):
+        """
+        Clear the saved queries once the bugs have been fixed
+        """
+        file_path = '../extra_files/save_number.txt'
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+            await self.message.channel.send('Cleared all saved queries')
+
     def start_bot(self):
         """
         Start the bot
@@ -361,6 +400,7 @@ class ClashBot:
             :param message: Context of the message
             """
             try:
+                self.message = message
                 if message.content == '!clash help':
                     await message.channel.send('Clash Bot commands:\n'
                                                '```'
@@ -381,11 +421,13 @@ class ClashBot:
                                                '-\tYou can use up to 5 summoner names.\n\n'
                                                '```')
                 elif message.content[:7] == '!clash ':
-                    self.message = message
                     await self.process_discord_message()
                 elif message.content[:11] == '!clash_team':
-                    self.message = message
                     await self.process_discord_message_single_player()
+                elif message.content[:11] == '!clash_save':
+                    await self.save_last_request()
+                elif message.content[:12] == '!clash_clear':
+                    await self.clear_saved_queries()
                 elif message.content[:6] == '!clash':
                     self.message_list.append(await message.channel.send('Unknown command. Use "!clash help" for the '
                                                                         'available options.'))
@@ -449,9 +491,10 @@ if __name__ == '__main__':
         try:
 
             # TODO:
+            #   -   Change output to proper embeds
             #   -   Possible counters
             #   -   Win rate of champions
-            #   -   Add a !remove function to remove posts
+            #   -   Way to re-order players after knowing their roles
 
             main()
 
