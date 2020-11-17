@@ -4,6 +4,7 @@ This file will create an image from the input as a table
 
 import prettytable
 from PIL import Image, ImageDraw, ImageFont
+from src import aws
 
 
 class CreateImage:
@@ -72,6 +73,7 @@ class CreateImage:
         Save the image as the given file name
         """
         self.table_to_image.img.save(self.file_name)
+        aws.AWSHandler().upload_image(self.file_name)
 
     def convert_columns_to_rows(self, columns: list):
         """

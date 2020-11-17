@@ -67,7 +67,7 @@ class RecentChampion:
         """
         Create the image from the processed results
         """
-        CreateImage(self.titles, self.columns, '../extra_files/recent_champion.png',
+        CreateImage(self.titles, self.columns, f'../extra_files/{self.table_type}.png',
                     colour=self.colour_columns, convert_columns=True, title_colours=self.title_colours)
 
     def create_recent_champion_table(self):
