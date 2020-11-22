@@ -3,8 +3,9 @@ This file will create an image from the input as a table
 """
 
 import prettytable
+import aws
+
 from PIL import Image, ImageDraw, ImageFont
-from src import aws
 
 
 class CreateImage:
