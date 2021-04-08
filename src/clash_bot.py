@@ -14,6 +14,8 @@ import datetime
 from discord import File
 from discord.ext import commands
 from discord import ActivityType, Activity, Embed
+from discord_slash import SlashCommand
+from discord_slash.utils.manage_commands import create_option
 from calculate_recommendations import CalculateBanRecommendations
 from mastery_shared import MasteryShared
 from role_rate import RoleRate
@@ -275,8 +277,7 @@ class TableHandler:
         # Notify the user tables are being created
         player_message = '\n\t-\t'.join(self.player_list)
         self.discord_bot.message_list.append(
-            await self.discord_bot.message.channel.send(f'Attempting to create tables for:\n'
-                                                        f'\t-\t{player_message}'))
+            await self.discord_bot.message.send(f'Attempting to create tables for:\n\t-\t{player_message}'))
 
     async def parse_discord_message_single_player(self):
         """
@@ -284,8 +285,7 @@ class TableHandler:
         """
         self.player_list = [' '.join(self.discord_bot.message.content.strip().split()[1:])]
         self.discord_bot.message_list.append(
-            await self.discord_bot.message.channel.send(f'Attempting to create tables for '
-                                                        f'{self.player_list[0]}\'s clash team.'))
+            await self.discord_bot.message.send(f'Attempting to create tables for {self.player_list[0]}\'s clash team.'))
 
 
 class DiscordBot:
@@ -294,6 +294,7 @@ class DiscordBot:
     """
     def __init__(self):
         self.bot = commands.Bot(command_prefix='!')
+        self.slash = SlashCommand(self.bot, sync_commands=True)
         self.table_handler = TableHandler(self)
         self.message = None
         self.reaction_payload = None
@@ -474,7 +475,7 @@ class DiscordBot:
             """
             if os.name == 'nt':
                 print('Ready')
-            await self.bot.change_presence(activity=Activity(type=ActivityType.playing, name='!clash help'))
+            await self.bot.change_presence(activity=Activity(type=ActivityType.playing, name='/clash'))
             self.load_message_history()
 
         @self.bot.event
@@ -487,6 +488,19 @@ class DiscordBot:
             if not reaction_payload.member.bot:
                 self.reaction_payload = reaction_payload
                 await self.process_reaction_event()
+
+        @self.slash.slash(name='clash',
+                          description='Gather information about a player\'s clash team',
+                          options=[create_option(
+                              name='player_name',
+                              description='A name of a single player on a clash team',
+                              option_type=3,
+                              required=True
+                          )])
+        async def clash(message, player):
+            self.message = message
+            self.message.content = f'x {player}'
+            await self.process_discord_message_single_player()
 
         # Run the bot
         self.bot.run(os.getenv('DISCORD_TOKEN'))

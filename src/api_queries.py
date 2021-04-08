@@ -228,7 +228,7 @@ class APIQueries:
         try:
             clash_team_info = self.get_json(f'{self.base_url}/lol/clash/v1/players/by-summoner/'
                                             f'{self.player_information[self.player_list[0]]["id"]}{self.api_key}')
-        except HTTPError:
+        except Exception:
             self.errors['no_clash_team'].append(self.player_list[0])
         else:
             if clash_team_info:
