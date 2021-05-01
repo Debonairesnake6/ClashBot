@@ -239,8 +239,12 @@ class TableHandler:
         if not self.debug:
             self.api_info = api_queries.APIQueries(self.player_list, clash_api)
         else:
-            with shelve.open('../extra_files/my_api') as shelf:
-                self.api_info = dict(shelf)['0']
+            try:
+                with shelve.open('/home/ubuntu/ClashBot/extra_files/my_api') as shelf:
+                    self.api_info = dict(shelf)['0']
+            except Exception:
+                import dbm
+                print()
 
         # Save the results to a local shelf in case they need to be used later
         file_path = '../extra_files/save_number.txt'
@@ -489,6 +493,12 @@ class DiscordBot:
                 self.reaction_payload = reaction_payload
                 await self.process_reaction_event()
 
+        # Set the guild id for only local testing
+        if os.name == 'nt':
+            guild_ids = [143193976709578752]
+        else:
+            guild_ids = None
+
         @self.slash.slash(name='clash',
                           description='Gather information about a player\'s clash team',
                           options=[create_option(
@@ -496,7 +506,8 @@ class DiscordBot:
                               description='A name of a single player on a clash team',
                               option_type=3,
                               required=True
-                          )])
+                          )],
+                          guild_ids=guild_ids)
         async def clash(message, player):
             self.message = message
             self.message.content = f'x {player}'

@@ -71,7 +71,10 @@ class PlayerLockedInPosition:
         """
         colours = []
         for player in self.api_results.player_information:
-            colours.append(self.api_results.player_information[player]['ranked_info']['tier'].lower())
+            try:
+                colours.append(self.api_results.player_information[player]['ranked_info']['tier'].lower())
+            except KeyError:
+                colours.append('unranked')
         self.colour_columns.append(colours)
         self.colour_columns.append(colours)
 

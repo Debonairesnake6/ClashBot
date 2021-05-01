@@ -287,6 +287,8 @@ class APIQueries:
                                           f'{self.player_information[player]["id"]}{self.api_key}')
         except HTTPError:
             self.errors['no_ranked_info'].append(player)
+            self.player_information[player]['ranked_info'] = {'everything': [], 'queue_score': 9, 'queue_rank': 5,
+                                                              'tier': 'UNRANKED'}
         else:
             self.player_information[player]['ranked_info'] = {'everything': summoner_info,
                                                               'queue_score': 9, 'queue_rank': 5}
@@ -361,6 +363,7 @@ class APIQueries:
         try:
             self.player_information[player]['ranked_match_history'] = self.get_json(query_url)['matches']
         except HTTPError:
+            self.player_information[player]['ranked_match_history'] = []
             if player not in self.errors['no_match_history']:
                 self.errors['no_ranked_clash'].append(player)
 
