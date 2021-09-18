@@ -19,8 +19,8 @@ jmespath==0.10.0
 multidict==4.7.5
 parso==0.6.2
 pickleshare==0.7.5
-Pillow==8.2.0
-pip==19.0.3
+Pillow==8.3.2
+pip==19.2
 plumbum==1.6.9
 prettytable==0.7.2
 prompt-toolkit==3.0.5
@@ -36,8 +36,8 @@ setuptools==45.2.0
 six==1.14.0
 traitlets==4.3.3
 typing-extensions==3.7.4.3
-urllib3==1.25.8
+urllib3==1.26.5
 wcwidth==0.1.9
-websockets==8.1
+websockets==9.1
 yarl==1.4.2
 yattag==1.13.2
