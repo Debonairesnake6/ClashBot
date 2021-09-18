@@ -508,9 +508,9 @@ class DiscordBot:
                               required=True
                           )],
                           guild_ids=guild_ids)
-        async def clash(message, player):
+        async def clash(message, player_name):
             self.message = message
-            self.message.content = f'x {player}'
+            self.message.content = f'x {player_name}'
             await self.process_discord_message_single_player()
 
         # Run the bot
