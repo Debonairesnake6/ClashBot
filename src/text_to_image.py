@@ -156,6 +156,7 @@ class TableToImage:
             'silver': (134, 158, 166),
             'gold': (201, 136, 52),
             'platinum': (62, 121, 120),
+            'emerald': (2, 151, 57),
             'diamond': (131, 184, 215),
             'master': (146, 100, 182),
             'grandmaster': (214, 51, 46),
@@ -177,7 +178,7 @@ class TableToImage:
         # Create the correct size image for the table
         rows = self.table.count('\n')
         columns = self.table.split('\n')[0].count('-') + self.table.split('\n')[0].count('+')
-        self.img = Image.new('RGB', ((columns * 12) + 24, rows * 21 + 48), color=(54, 57, 63))
+        self.img = Image.new('RGB', ((columns * 12) + 24, rows * 21 + 48), color=(36, 36, 41))  # Background
 
         # Initialize font and drawing object
         self.font = ImageFont.truetype('../extra_files/cour.ttf', 20)

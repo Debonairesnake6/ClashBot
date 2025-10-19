@@ -1,21 +1,24 @@
 """
 This file handles all of the interactions with discord and controls creating each table to display
 """
-
+import asyncio
 import os
 import urllib
 import time
 import sys
+
+import discord
+import discord.gateway
+
 import api_queries
 import json
 import shelve
 import datetime
 
-from discord import File
 from discord.ext import commands
-from discord import ActivityType, Activity, Embed
-from discord_slash import SlashCommand
-from discord_slash.utils.manage_commands import create_option
+from discord import ActivityType, Activity, Embed, app_commands, File
+# from discord_slash import SlashCommand
+# from discord_slash.utils.manage_commands import create_option
 from calculate_recommendations import CalculateBanRecommendations
 from mastery_shared import MasteryShared
 from role_rate import RoleRate
@@ -230,14 +233,15 @@ class TableHandler:
         if failure_message != 'The given player(s) are not in a clash team:\n':
             self.discord_bot.message_list.append(await self.discord_bot.message.channel.send(failure_message))
 
-    def get_api_information_for_each_player(self, clash_api: bool = False):
+    async def get_api_information_for_each_player(self, clash_api: bool = False):
         """
         Run the API queries for each player
 
         :param clash_api: If using a single player to leverage the clash API
         """
         if not self.debug:
-            self.api_info = api_queries.APIQueries(self.player_list, clash_api)
+            api_info = api_queries.APIQueries(self.player_list, clash_api)
+            self.api_info = api_info
         else:
             try:
                 with shelve.open('/home/ubuntu/ClashBot/extra_files/my_api') as shelf:
@@ -246,50 +250,44 @@ class TableHandler:
                 import dbm
                 print()
 
-        # Save the results to a local shelf in case they need to be used later
-        file_path = '../extra_files/save_number.txt'
-        shelf_path = '../extra_files/my_api'
-        if os.path.isfile(file_path):
-            with open(file_path, 'r') as my_number:
-                save_number = my_number.read().strip()
-        else:
-            save_number = '0'
-
-        with shelve.open(shelf_path) as shelf:
-            shelf[save_number] = self.api_info
+        # # Save the results to a local shelf in case they need to be used later
+        # file_path = '../extra_files/save_number.txt'
+        # shelf_path = '../extra_files/my_api'
+        # if os.path.isfile(file_path):
+        #     with open(file_path, 'r') as my_number:
+        #         save_number = my_number.read().strip()
+        # else:
+        #     save_number = '0'
+        #
+        # with shelve.open(shelf_path) as shelf:
+        #     shelf[save_number] = self.api_info
 
     async def get_names_from_discord_message(self):
         """
         Parse the discord message to grab each summoner name given
         """
-        self.player_list = []
-        # Get the first 5 player names given
-        for player_name_cnt, player_name in enumerate(self.discord_bot.message.content[7:].split(',')):
-            if player_name_cnt >= 5:
-                continue
-            else:
-                self.player_list.append(player_name.replace(',', '').strip())
+        self.player_list = [param['value'] for param in self.discord_bot.message.data['options']]
 
         # Use the default list of players if none were given
-        if self.player_list == ['']:
-            self.player_list = ['Debonairesnake6',
-                                'In Vänity',
-                                'Wosko',
-                                'Smol Squish',
-                                'Ori Bot']
+        if self.player_list == ['test']:
+            self.player_list = ['iKony',
+                                'Eric1',
+                                'Shorthop',
+                                'spiderjo',
+                                'Debonairesnake6']
 
         # Notify the user tables are being created
-        player_message = '\n\t-\t'.join(self.player_list)
+        player_message = '\n-\t'.join(self.player_list)
         self.discord_bot.message_list.append(
-            await self.discord_bot.message.send(f'Attempting to create tables for:\n\t-\t{player_message}'))
+            await self.discord_bot.message.channel.send(f'Attempting to create tables for:\n\t-\t{player_message}'))
 
     async def parse_discord_message_single_player(self):
         """
         Parse the discord message to extract the single player name given
         """
-        self.player_list = [' '.join(self.discord_bot.message.content.strip().split()[1:])]
+        self.player_list = [self.discord_bot.message.data['options'][0]['value']]  # todo get the acutal clash team with the new api call
         self.discord_bot.message_list.append(
-            await self.discord_bot.message.send(f'Attempting to create tables for {self.player_list[0]}\'s clash team.'))
+            await self.discord_bot.message.channel.send(f'Attempting to create tables for {self.player_list[0]}\'s clash team.'))
 
 
 class DiscordBot:
@@ -297,16 +295,23 @@ class DiscordBot:
     Discord bot handler
     """
     def __init__(self):
-        self.bot = commands.Bot(command_prefix='!')
-        self.slash = SlashCommand(self.bot, sync_commands=True)
+        intents = discord.Intents.default()
+        intents.message_content = True
+        self.bot = commands.Bot(command_prefix=commands.when_mentioned_or('!'), intents=intents)
+        self.bot.setup_hook = self.setup_hook
+        self.bot.tree.clear_commands(guild=None)
         self.table_handler = TableHandler(self)
         self.message = None
         self.reaction_payload = None
         self.message_history = {}
         self.message_list = []
         self.embed = Embed()
-        self.image_url = 'https://clashbotimages.s3.us-east-2.amazonaws.com/'
+        self.image_url = 'https://clashbotimages2025.s3.us-east-2.amazonaws.com/'
         self.lock = Lock()
+
+    async def setup_hook(self) -> None:
+        print("Syncing commands...")
+        await self.bot.tree.sync()
 
     async def post_to_discord(self, title: str, filename: str, fields: dict):
         """
@@ -331,7 +336,7 @@ class DiscordBot:
         """
         self.message_list = []
         await self.table_handler.get_names_from_discord_message()
-        self.table_handler.get_api_information_for_each_player()
+        await self.table_handler.get_api_information_for_each_player()
         await self.table_handler.get_all_tables()
 
     async def process_discord_message_single_player(self):
@@ -340,7 +345,7 @@ class DiscordBot:
         """
         self.message_list = []
         await self.table_handler.parse_discord_message_single_player()
-        self.table_handler.get_api_information_for_each_player(clash_api=True)
+        await self.table_handler.get_api_information_for_each_player(clash_api=True)
         await self.table_handler.get_all_tables(display_positions=True)
 
     async def process_reaction_event(self):
@@ -493,28 +498,28 @@ class DiscordBot:
                 self.reaction_payload = reaction_payload
                 await self.process_reaction_event()
 
-        # Set the guild id for only local testing
-        if os.name == 'nt':
-            guild_ids = [143193976709578752]
-        else:
-            guild_ids = None
-
-        @self.slash.slash(name='clash',
-                          description='Gather information about a player\'s clash team',
-                          options=[create_option(
-                              name='player_name',
-                              description='A name of a single player on a clash team',
-                              option_type=3,
-                              required=True
-                          )],
-                          guild_ids=guild_ids)
-        async def clash(message, player_name):
+        @self.bot.tree.command(name='clash',
+                           description='Gather information about a player\'s clash team',
+                           guild=None)
+        async def clash(message, player_name: str):
+            await message.response.send_message(f"Starting to scout {player_name}'s team")
             self.message = message
-            self.message.content = f'x {player_name}'
             await self.process_discord_message_single_player()
+
+        @self.bot.tree.command(name='scout',
+                           description='Gather information about a player(s)',
+                           guild=None)
+        async def scout(message: discord.Interaction, player_name: str):
+            await message.response.send_message(f"Starting to scout: {player_name}")
+            self.message = message
+            await self.process_discord_message()
 
         # Run the bot
         self.bot.run(os.getenv('DISCORD_TOKEN'))
+
+
+def nop(*args, **kwargs):
+    pass
 
 
 def main():
@@ -523,6 +528,8 @@ def main():
     """
 
     # Start to read_chat messages on the server
+    # discord.gateway._log.debug = nop
+    discord.gateway._log.warning = nop
     clash_bot = DiscordBot()
     clash_bot.start_bot()
 

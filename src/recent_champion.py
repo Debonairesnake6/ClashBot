@@ -4,6 +4,10 @@ This file gathers all of the information needed to create the recent champion ta
 import operator
 
 from text_to_image import CreateImage
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+   from api_queries import APIQueries
 
 
 class BadTableType(Exception):
@@ -18,7 +22,7 @@ class RecentChampion:
     """
     Handle creating the recent champion table
     """
-    def __init__(self, api_results: object, table_type: str, title_colours: list):
+    def __init__(self, api_results: 'APIQueries', table_type: str, title_colours: list):
         """
         Handle creating the recent champion table
 
@@ -210,5 +214,5 @@ class RecentChampion:
         Determine the champion played int he current game
         """
         for champion_name in self.champion_info:
-            if str(self.current_match['champion']) == self.champion_info[champion_name]['key']:
+            if str(self.current_match['champion']) == self.champion_info[champion_name]['name']:
                 self.champions_played[champion_name] = self.champions_played.get(champion_name, 0) + 1

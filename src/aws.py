@@ -19,8 +19,8 @@ class AWSHandler:
         """
         filename = filename.split('/')[-1]
         try:
-            self.auth.upload_file(f'../extra_files/{filename}', 'clashbotimages', filename,
-                                  ExtraArgs={'GrantRead': 'uri=http://acs.amazonaws.com/groups/global/AllUsers'})
+            self.auth.upload_file(f'../extra_files/{filename}', 'clashbotimages2025', filename,
+                                  ExtraArgs={'ContentType': 'image/png',})
         except FileNotFoundError as e:
             print()
             pass

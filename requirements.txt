@@ -3,7 +3,7 @@ async-timeout==3.0.1
 attrs==19.3.0
 backcall==0.1.0
 boto3==1.16.19
-botocore==1.19.19
+botocore
 cached-property==1.5.1
 certifi==2019.11.28
 chardet==3.0.4
@@ -19,8 +19,7 @@ jmespath==0.10.0
 multidict==4.7.5
 parso==0.6.2
 pickleshare==0.7.5
-Pillow==8.3.2
-pip==19.2
+#Pillow==8.3.2
 plumbum==1.6.9
 prettytable==0.7.2
 prompt-toolkit==3.0.5
@@ -29,10 +28,9 @@ python-dateutil==2.8.1
 python-dotenv==0.11.0
 pywinsandbox==1.1.0
 recordclass==0.13.2
-requests==2.23.0
+requests
 rpyc==4.1.4
 s3transfer==0.3.3
-setuptools==45.2.0
 six==1.14.0
 traitlets==4.3.3
 typing-extensions==3.7.4.3
