@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 import base64
 
 API_ENDPOINT = 'https://discord.com/api/v8'
-CLIENT_ID = '731973634519728168'
-CLIENT_SECRET = 'n-ZsqL0fFh64jxUQTu3oxZ2P19dHsZUX'
+CLIENT_ID = ''
+CLIENT_SECRET = ''
 
 def get_token():
   data = {
